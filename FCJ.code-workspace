@@ -1,0 +1,620 @@
+{
+	"folders": [
+		{
+			"name": "FCJ",
+			"path": "."
+		},
+		{
+			"name": "UE5",
+			"path": "/Users/Shared/Epic Games/UE_5.6"
+		}
+	],
+	"settings": {
+		"typescript.tsc.autoDetect": "off",
+		"npm.autoDetect": "off",
+		"terminal.integrated.env.mac": {
+			"PATH": "/Users/Shared/Epic Games/UE_5.6/Engine/Binaries/ThirdParty/DotNet/8.0.300/mac-arm64:${env:PATH}",
+			"DOTNET_ROOT": "/Users/Shared/Epic Games/UE_5.6/Engine/Binaries/ThirdParty/DotNet/8.0.300/mac-arm64",
+			"DOTNET_HOST_PATH": "/Users/Shared/Epic Games/UE_5.6/Engine/Binaries/ThirdParty/DotNet/8.0.300/mac-arm64/dotnet",
+			"DOTNET_MULTILEVEL_LOOKUP": "0",
+			"DOTNET_ROLL_FORWARD": "LatestMajor"
+		}
+	},
+	"extensions": {
+		"recommendations": [
+			"ms-vscode.cpptools",
+			"ms-dotnettools.csharp"
+		]
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "FCJ Mac Debug Build",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJ",
+					"Mac",
+					"Debug",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJ Mac Debug Rebuild",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJ",
+					"Mac",
+					"Debug",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"FCJ Mac Debug Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJ Mac Debug Clean",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJ",
+					"Mac",
+					"Debug",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex",
+					"-clean"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJ Mac DebugGame Build",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJ",
+					"Mac",
+					"DebugGame",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJ Mac DebugGame Rebuild",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJ",
+					"Mac",
+					"DebugGame",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"FCJ Mac DebugGame Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJ Mac DebugGame Clean",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJ",
+					"Mac",
+					"DebugGame",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex",
+					"-clean"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJ Mac Development Build",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJ",
+					"Mac",
+					"Development",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJ Mac Development Rebuild",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJ",
+					"Mac",
+					"Development",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"FCJ Mac Development Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJ Mac Development Clean",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJ",
+					"Mac",
+					"Development",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex",
+					"-clean"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJ Mac Test Build",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJ",
+					"Mac",
+					"Test",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJ Mac Test Rebuild",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJ",
+					"Mac",
+					"Test",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"FCJ Mac Test Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJ Mac Test Clean",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJ",
+					"Mac",
+					"Test",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex",
+					"-clean"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJ Mac Shipping Build",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJ",
+					"Mac",
+					"Shipping",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJ Mac Shipping Rebuild",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJ",
+					"Mac",
+					"Shipping",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"FCJ Mac Shipping Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJ Mac Shipping Clean",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJ",
+					"Mac",
+					"Shipping",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex",
+					"-clean"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJEditor Mac Debug Build",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJEditor",
+					"Mac",
+					"Debug",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJEditor Mac Debug Rebuild",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJEditor",
+					"Mac",
+					"Debug",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"FCJEditor Mac Debug Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJEditor Mac Debug Clean",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJEditor",
+					"Mac",
+					"Debug",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex",
+					"-clean"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJEditor Mac DebugGame Build",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJEditor",
+					"Mac",
+					"DebugGame",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJEditor Mac DebugGame Rebuild",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJEditor",
+					"Mac",
+					"DebugGame",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"FCJEditor Mac DebugGame Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJEditor Mac DebugGame Clean",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJEditor",
+					"Mac",
+					"DebugGame",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex",
+					"-clean"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJEditor Mac Development Build",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJEditor",
+					"Mac",
+					"Development",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJEditor Mac Development Rebuild",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJEditor",
+					"Mac",
+					"Development",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"FCJEditor Mac Development Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"label": "FCJEditor Mac Development Clean",
+				"group": "build",
+				"command": "Engine/Build/BatchFiles/Mac/Build.sh",
+				"args": [
+					"FCJEditor",
+					"Mac",
+					"Development",
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-waitmutex",
+					"-clean"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			}
+		]
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Launch FCJ (Debug)",
+				"request": "launch",
+				"program": "/Users/baeksujin/Downloads/FCJ/Binaries/Mac/UnrealGame-Mac-Debug.app/Contents/MacOS/UnrealGame-Mac-Debug",
+				"preLaunchTask": "FCJ Mac Debug Build",
+				"args": [
+				],
+				"cwd": "/Users/Shared/Epic Games/UE_5.6",
+				"type": "lldb",
+				"sourceFileMap": {
+					"/UEVFS/FCJ": "/Users/baeksujin/Downloads/FCJ",
+					"/UEVFS/Root": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"name": "Launch FCJ (DebugGame)",
+				"request": "launch",
+				"program": "/Users/baeksujin/Downloads/FCJ/Binaries/Mac/UnrealGame-Mac-DebugGame.app/Contents/MacOS/UnrealGame-Mac-DebugGame",
+				"preLaunchTask": "FCJ Mac DebugGame Build",
+				"args": [
+				],
+				"cwd": "/Users/Shared/Epic Games/UE_5.6",
+				"type": "lldb",
+				"sourceFileMap": {
+					"/UEVFS/FCJ": "/Users/baeksujin/Downloads/FCJ",
+					"/UEVFS/Root": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"name": "Launch FCJ (Development)",
+				"request": "launch",
+				"program": "/Users/baeksujin/Downloads/FCJ/Binaries/Mac/UnrealGame.app/Contents/MacOS/UnrealGame",
+				"preLaunchTask": "FCJ Mac Development Build",
+				"args": [
+				],
+				"cwd": "/Users/Shared/Epic Games/UE_5.6",
+				"type": "lldb",
+				"sourceFileMap": {
+					"/UEVFS/FCJ": "/Users/baeksujin/Downloads/FCJ",
+					"/UEVFS/Root": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"name": "Launch FCJ (Test)",
+				"request": "launch",
+				"program": "/Users/baeksujin/Downloads/FCJ/Binaries/Mac/UnrealGame-Mac-Test.app/Contents/MacOS/UnrealGame-Mac-Test",
+				"preLaunchTask": "FCJ Mac Test Build",
+				"args": [
+				],
+				"cwd": "/Users/Shared/Epic Games/UE_5.6",
+				"type": "lldb",
+				"sourceFileMap": {
+					"/UEVFS/FCJ": "/Users/baeksujin/Downloads/FCJ",
+					"/UEVFS/Root": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"name": "Launch FCJ (Shipping)",
+				"request": "launch",
+				"program": "/Users/baeksujin/Downloads/FCJ/Binaries/Mac/UnrealGame-Mac-Shipping.app/Contents/MacOS/UnrealGame-Mac-Shipping",
+				"preLaunchTask": "FCJ Mac Shipping Build",
+				"args": [
+				],
+				"cwd": "/Users/Shared/Epic Games/UE_5.6",
+				"type": "lldb",
+				"sourceFileMap": {
+					"/UEVFS/FCJ": "/Users/baeksujin/Downloads/FCJ",
+					"/UEVFS/Root": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"name": "Launch FCJEditor (Debug)",
+				"request": "launch",
+				"program": "/Users/Shared/Epic Games/UE_5.6/Engine/Binaries/Mac/UnrealEditor-Mac-Debug.app/Contents/MacOS/UnrealEditor-Mac-Debug",
+				"preLaunchTask": "FCJEditor Mac Debug Build",
+				"args": [
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject"
+				],
+				"cwd": "/Users/Shared/Epic Games/UE_5.6",
+				"type": "lldb",
+				"sourceFileMap": {
+					"/UEVFS/FCJ": "/Users/baeksujin/Downloads/FCJ",
+					"/UEVFS/Root": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"name": "Launch FCJEditor (DebugGame)",
+				"request": "launch",
+				"program": "/Users/Shared/Epic Games/UE_5.6/Engine/Binaries/Mac/UnrealEditor-Mac-DebugGame.app/Contents/MacOS/UnrealEditor-Mac-DebugGame",
+				"preLaunchTask": "FCJEditor Mac DebugGame Build",
+				"args": [
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject"
+				],
+				"cwd": "/Users/Shared/Epic Games/UE_5.6",
+				"type": "lldb",
+				"sourceFileMap": {
+					"/UEVFS/FCJ": "/Users/baeksujin/Downloads/FCJ",
+					"/UEVFS/Root": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"name": "Launch FCJEditor (Development)",
+				"request": "launch",
+				"program": "/Users/Shared/Epic Games/UE_5.6/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor",
+				"preLaunchTask": "FCJEditor Mac Development Build",
+				"args": [
+					"/Users/baeksujin/Downloads/FCJ/FCJ.uproject"
+				],
+				"cwd": "/Users/Shared/Epic Games/UE_5.6",
+				"type": "lldb",
+				"sourceFileMap": {
+					"/UEVFS/FCJ": "/Users/baeksujin/Downloads/FCJ",
+					"/UEVFS/Root": "/Users/Shared/Epic Games/UE_5.6"
+				}
+			},
+			{
+				"name": "Generate Project Files",
+				"type": "coreclr",
+				"request": "launch",
+				"preLaunchTask": "UnrealBuildTool Mac Development Build",
+				"program": "/Users/Shared/Epic Games/UE_5.6/Engine/Build/BatchFiles/RunUBT.bat",
+				"args": [
+					"-projectfiles",
+					"-vscode",
+					"-project=/Users/baeksujin/Downloads/FCJ/FCJ.uproject",
+					"-game",
+					"-engine",
+					"-dotnet"
+				],
+				"env": {
+					"PATH": "/Users/Shared/Epic Games/UE_5.6/Engine/Binaries/ThirdParty/DotNet/8.0.300/mac-arm64:${env:PATH}",
+					"DOTNET_ROOT": "/Users/Shared/Epic Games/UE_5.6/Engine/Binaries/ThirdParty/DotNet/8.0.300/mac-arm64",
+					"DOTNET_HOST_PATH": "/Users/Shared/Epic Games/UE_5.6/Engine/Binaries/ThirdParty/DotNet/8.0.300/mac-arm64/dotnet",
+					"DOTNET_MULTILEVEL_LOOKUP": "0",
+					"DOTNET_ROLL_FORWARD": "LatestMajor"
+				},
+				"console": "internalConsole",
+				"internalConsoleOptions": "openOnSessionStart",
+				"stopAtEntry": false,
+				"cwd": "/Users/Shared/Epic Games/UE_5.6"
+			}
+		]
+	}
+}
