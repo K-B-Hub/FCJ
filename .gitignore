@@ -1,4 +1,5 @@
 /Content
+/Plugins
 
 # Visual Studio 2015 user specific files
 .vs/
@@ -44,7 +45,6 @@
 *.sdf
 *.VC.db
 *.VC.opendb
-
 # Precompiled Assets
 SourceArt/**/*.png
 SourceArt/**/*.tga
@@ -76,3 +76,4 @@ Plugins/*/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+/*.vsconfig
