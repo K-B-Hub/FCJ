@@ -1,5 +1,7 @@
-/Content
 /Plugins
+/Content/Assets/
+/Content/Collections/
+/Content/Developers/
 
 # Visual Studio 2015 user specific files
 .vs/
