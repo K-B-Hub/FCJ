@@ -13,5 +13,8 @@ UCLASS()
 class FCJ_API ALocalGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
+
+public:
+	ALocalGameMode();
 	
 };

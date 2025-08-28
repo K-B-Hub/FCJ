@@ -2,4 +2,9 @@
 
 
 #include "LocalGameMode.h"
+#include "PlayerController/LocalPlayerController.h"
 
+ALocalGameMode::ALocalGameMode()
+{
+    PlayerControllerClass = ALocalPlayerController::StaticClass();
+}

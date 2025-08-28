@@ -3,6 +3,7 @@
 
 #include "MainMenuWidget.h"
 #include "Components/Button.h"
+#include "Kismet/GameplayStatics.h"
 
 void UMainMenuWidget::NativeConstruct()
 {
@@ -31,6 +32,7 @@ void UMainMenuWidget::NativeConstruct()
 
 void UMainMenuWidget::OnLocalPlayClicked()
 {
+    UGameplayStatics::OpenLevel(GetWorld(), TEXT("/Game/Levels/Test"), true);
 }
 
 void UMainMenuWidget::OnMultiPlayClicked()
