@@ -1,10 +1,13 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 
 #include "LocalGameMode.h"
-#include "PlayerController/LocalPlayerController.h"
+
+#include "FCJ/PlayerCharacter/LocalPlayerCharacter.h"
+#include "FCJ/PlayerController/LocalPlayerController.h"
 
 ALocalGameMode::ALocalGameMode()
 {
-    PlayerControllerClass = ALocalPlayerController::StaticClass();
+	PlayerControllerClass = DefaultPlayerControllerClass;
+	DefaultPawnClass = DefaultPlayerPawnClass;
 }
