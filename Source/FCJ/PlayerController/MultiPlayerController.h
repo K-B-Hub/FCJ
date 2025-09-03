@@ -26,8 +26,18 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	UInputMappingContext* DefaultMappingContext;
 
+	// Individual Movement InputActions
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-	UInputAction* MoveAction;
+	UInputAction* MoveForwardAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	UInputAction* MoveBackwardAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	UInputAction* MoveLeftAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	UInputAction* MoveRightAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	UInputAction* LookAction;
@@ -41,7 +51,8 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	UInputAction* ZoomAction;
 
-	// Input settings
+public:
+	// Input settings - made public for SettingsWidget access
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input Settings")
 	float MouseSensitivity = 1.0f;
 
@@ -58,13 +69,29 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input Settings")
 	float MaxZoomDistance = 800.0f;
 
-	// Input callback functions
-	void Move(const FInputActionValue& Value);
+protected:
+
+	// Individual movement functions
+	void MoveForward(const FInputActionValue& Value);
+	void MoveBackward(const FInputActionValue& Value);
+	void MoveLeft(const FInputActionValue& Value);
+	void MoveRight(const FInputActionValue& Value);
+	
 	void Look(const FInputActionValue& Value);
 	void Jump();
 	void StopJumping();
 	void PerformSpecialAction();
 	void Zoom(const FInputActionValue& Value);
+
+private:
+	// Current movement input values for each direction
+	float ForwardInputValue = 0.0f;
+	float BackwardInputValue = 0.0f;
+	float LeftInputValue = 0.0f;
+	float RightInputValue = 0.0f;
+	
+	// Helper function to apply combined movement
+	void ApplyCombinedMovement();
 
 public:
 	// Blueprint callable functions
@@ -79,4 +106,50 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Input")
 	void SetZoomLimits(float MinDistance, float MaxDistance) { MinZoomDistance = MinDistance; MaxZoomDistance = MaxDistance; }
+
+	// Settings persistence
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	void LoadInputSettings();
+
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	void SaveInputSettings();
+
+	// Key remapping functions
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	void ApplyKeyRemapping();
+
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	TArray<FKey> GetDefaultKeysForAction(UInputAction* Action);
+
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	void SetKeyForAction(UInputAction* Action, const FKey& NewKey);
+
+	// Getter functions for SettingsWidget
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	UInputMappingContext* GetDefaultMappingContext() const { return DefaultMappingContext; }
+
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	UInputAction* GetMoveForwardAction() const { return MoveForwardAction; }
+
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	UInputAction* GetMoveBackwardAction() const { return MoveBackwardAction; }
+
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	UInputAction* GetMoveLeftAction() const { return MoveLeftAction; }
+
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	UInputAction* GetMoveRightAction() const { return MoveRightAction; }
+
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	UInputAction* GetJumpAction() const { return JumpAction; }
+
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	UInputAction* GetSpecialActionInput() const { return SpecialAction; }
+
+private:
+	// Config file section name for saving settings
+	static const FString InputSettingsSection;
+
+	// Helper function to apply key mappings from config
+	void ApplyKeyMappingsFromConfig(const TMap<FString, FString>& KeyMappings);
 };

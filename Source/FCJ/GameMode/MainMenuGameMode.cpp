@@ -5,6 +5,7 @@
 #include "FCJ/PlayerController/MainMenuController.h"
 #include "FCJ/Widdget/MainMenuWidget.h"
 #include "Blueprint/UserWidget.h"
+#include "GameFramework/GameUserSettings.h"
 
 AMainMenuGameMode::AMainMenuGameMode()
 {
@@ -15,6 +16,9 @@ void AMainMenuGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Apply saved display settings on game startup
+	ApplySavedDisplaySettings();
+
 	if (MainMenuWidgetClass)
 	{
 		MainMenuWidget = CreateWidget<UMainMenuWidget>(GetWorld(), MainMenuWidgetClass);
@@ -22,5 +26,15 @@ void AMainMenuGameMode::BeginPlay()
 		{
 			MainMenuWidget->AddToViewport();
 		}
+	}
+}
+
+void AMainMenuGameMode::ApplySavedDisplaySettings()
+{
+	UGameUserSettings* GameUserSettings = UGameUserSettings::GetGameUserSettings();
+	if (GameUserSettings)
+	{
+		GameUserSettings->LoadSettings();
+		GameUserSettings->ApplySettings(false);
 	}
 }
