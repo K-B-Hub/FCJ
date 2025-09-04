@@ -70,7 +70,6 @@ public:
 	float MaxZoomDistance = 800.0f;
 
 protected:
-
 	// Individual movement functions
 	void MoveForward(const FInputActionValue& Value);
 	void MoveBackward(const FInputActionValue& Value);

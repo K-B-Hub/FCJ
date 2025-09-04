@@ -120,6 +120,9 @@ void USettingsWidget::NativeConstruct()
 	bIsWaitingForKeyInput = false;
 	CurrentRemappingAction = TEXT("");
 
+	// Enable focusable for key input capture
+	SetIsFocusable(true);
+
 	// Load saved settings
 	LoadSettings();
 }
@@ -394,6 +397,9 @@ void USettingsWidget::StartKeyRemapping(const FString& ActionName)
 	CurrentRemappingAction = ActionName;
 	bIsWaitingForKeyInput = true;
 
+	// Force focus to this widget for key capture
+	SetKeyboardFocus();
+
 	// Update button text to show waiting state
 	UTextBlock* TextWidget = nullptr;
 	if (ActionName == TEXT("MoveForward")) TextWidget = MoveForwardKeyText;
@@ -408,6 +414,8 @@ void USettingsWidget::StartKeyRemapping(const FString& ActionName)
 		FText ButtonText = FText::FromString(TEXT("Press any key..."));
 		TextWidget->SetText(ButtonText);
 	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("Started key remapping for: %s"), *ActionName);
 }
 
 void USettingsWidget::UpdateKeyBinding(const FString& ActionName, const FKey& NewKey)
@@ -510,6 +518,7 @@ FReply USettingsWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyE
 	if (bIsWaitingForKeyInput && !CurrentRemappingAction.IsEmpty())
 	{
 		FKey PressedKey = InKeyEvent.GetKey();
+		UE_LOG(LogTemp, Warning, TEXT("Key pressed during remapping: %s"), *PressedKey.ToString());
 		
 		// Ignore certain keys
 		if (PressedKey != EKeys::Escape && PressedKey != EKeys::Enter)
@@ -517,6 +526,9 @@ FReply USettingsWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyE
 			UpdateKeyBinding(CurrentRemappingAction, PressedKey);
 			bIsWaitingForKeyInput = false;
 			CurrentRemappingAction = TEXT("");
+			
+			
+			UE_LOG(LogTemp, Warning, TEXT("Key binding completed"));
 			return FReply::Handled();
 		}
 		else if (PressedKey == EKeys::Escape)
@@ -525,8 +537,14 @@ FReply USettingsWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyE
 			RestoreButtonText(CurrentRemappingAction);
 			bIsWaitingForKeyInput = false;
 			CurrentRemappingAction = TEXT("");
+			
+			
+			UE_LOG(LogTemp, Warning, TEXT("Key binding cancelled"));
 			return FReply::Handled();
 		}
+		
+		// During key waiting, handle ALL keys to prevent UI navigation
+		return FReply::Handled();
 	}
 	
 	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);

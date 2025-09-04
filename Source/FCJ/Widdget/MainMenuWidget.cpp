@@ -4,6 +4,7 @@
 #include "MainMenuWidget.h"
 #include "Components/Button.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "SettingsWidget.h"
 
 void UMainMenuWidget::NativeConstruct()
@@ -57,6 +58,7 @@ void UMainMenuWidget::OnSettingClicked()
 
 void UMainMenuWidget::OnExitClicked()
 {
+	UKismetSystemLibrary::QuitGame(GetWorld(), GetOwningPlayer(), EQuitPreference::Quit, true);
 }
 
 void UMainMenuWidget::OnSettingsBackClicked()

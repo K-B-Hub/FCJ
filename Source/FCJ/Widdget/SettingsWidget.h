@@ -196,6 +196,7 @@ private:
 	// Key capture
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual bool SupportsKeyboardFocus() const { return true; }
 
 	// Member variables
 	TMap<FString, FInputRemapData> InputMappings;

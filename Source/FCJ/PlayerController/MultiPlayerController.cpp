@@ -110,28 +110,24 @@ void AMultiPlayerController::MoveForward(const FInputActionValue& Value)
 {
 	ForwardInputValue = Value.Get<float>();
 	ApplyCombinedMovement();
-	UE_LOG(LogTemp, Warning, TEXT("MoveForward: %f"), ForwardInputValue);
 }
 
 void AMultiPlayerController::MoveBackward(const FInputActionValue& Value)
 {
 	BackwardInputValue = Value.Get<float>();
 	ApplyCombinedMovement();
-	UE_LOG(LogTemp, Warning, TEXT("MoveBackward: %f"), BackwardInputValue);
 }
 
 void AMultiPlayerController::MoveLeft(const FInputActionValue& Value)
 {
 	LeftInputValue = Value.Get<float>();
 	ApplyCombinedMovement();
-	UE_LOG(LogTemp, Warning, TEXT("MoveLeft: %f"), LeftInputValue);
 }
 
 void AMultiPlayerController::MoveRight(const FInputActionValue& Value)
 {
 	RightInputValue = Value.Get<float>();
 	ApplyCombinedMovement();
-	UE_LOG(LogTemp, Warning, TEXT("MoveRight: %f"), RightInputValue);
 }
 
 void AMultiPlayerController::ApplyCombinedMovement()
@@ -158,10 +154,6 @@ void AMultiPlayerController::ApplyCombinedMovement()
 			character->AddMovementInput(ForwardDirection, NetForwardInput);
 			character->AddMovementInput(RightDirection, NetRightInput);
 			
-			if (NetForwardInput != 0.0f || NetRightInput != 0.0f)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Combined movement - Forward: %f, Right: %f"), NetForwardInput, NetRightInput);
-			}
 		}
 	}
 }
@@ -335,45 +327,37 @@ void AMultiPlayerController::ApplyKeyMappingsFromConfig(const TMap<FString, FStr
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Applying key mappings from config. Total mappings: %d"), KeyMappings.Num());
 	
 	// Apply key mappings to input actions
 	for (const auto& Pair : KeyMappings)
 	{
 		FKey NewKey(*Pair.Value);
-		UE_LOG(LogTemp, Warning, TEXT("Processing key mapping: %s -> %s"), *Pair.Key, *Pair.Value);
 		
 		if (NewKey.IsValid())
 		{
 			// Individual Movement Actions
 			if (Pair.Key == TEXT("MoveForward") && MoveForwardAction)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("Applying MoveForward key: %s"), *NewKey.ToString());
 				SetKeyForAction(MoveForwardAction, NewKey);
 			}
 			else if (Pair.Key == TEXT("MoveBackward") && MoveBackwardAction)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("Applying MoveBackward key: %s"), *NewKey.ToString());
 				SetKeyForAction(MoveBackwardAction, NewKey);
 			}
 			else if (Pair.Key == TEXT("MoveLeft") && MoveLeftAction)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("Applying MoveLeft key: %s"), *NewKey.ToString());
 				SetKeyForAction(MoveLeftAction, NewKey);
 			}
 			else if (Pair.Key == TEXT("MoveRight") && MoveRightAction)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("Applying MoveRight key: %s"), *NewKey.ToString());
 				SetKeyForAction(MoveRightAction, NewKey);
 			}
 			else if (Pair.Key == TEXT("Jump") && JumpAction)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("Applying Jump key: %s"), *NewKey.ToString());
 				SetKeyForAction(JumpAction, NewKey);
 			}
 			else if (Pair.Key == TEXT("Action") && SpecialAction)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("Applying Action key: %s"), *NewKey.ToString());
 				SetKeyForAction(SpecialAction, NewKey);
 			}
 		}
