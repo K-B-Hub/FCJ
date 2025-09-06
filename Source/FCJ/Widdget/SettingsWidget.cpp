@@ -199,17 +199,33 @@ void USettingsWidget::ApplyResolution(const FString& Resolution)
 		{
 			GameUserSettings->SetScreenResolution(CachedResolution);
 			GameUserSettings->ApplyResolutionSettings(false);
+			GameUserSettings->SaveSettings(); // Save to ensure persistence across level changes
+			UE_LOG(LogTemp, Warning, TEXT("Applied and saved resolution: %dx%d"), CachedResolution.X, CachedResolution.Y);
 		}
 	}
 }
 
 void USettingsWidget::ApplyWindowMode(EWindowMode::Type WindowMode)
 {
-	if (UGameViewportClient* ViewportClient = GetWorld()->GetGameViewport())
-	{
-		ViewportClient->GetWindow()->SetWindowMode(WindowMode);
-	}
 	CachedWindowMode = WindowMode;
+	
+	// Apply immediately using GameUserSettings for consistency
+	if (UGameUserSettings* GameUserSettings = UGameUserSettings::GetGameUserSettings())
+	{
+		GameUserSettings->SetFullscreenMode(WindowMode);
+		GameUserSettings->ApplySettings(false);
+		GameUserSettings->SaveSettings(); // Save to ensure persistence across level changes
+		
+		FString ModeString;
+		switch (WindowMode)
+		{
+		case EWindowMode::Fullscreen: ModeString = TEXT("Fullscreen"); break;
+		case EWindowMode::Windowed: ModeString = TEXT("Windowed"); break;
+		case EWindowMode::WindowedFullscreen: ModeString = TEXT("WindowedFullscreen"); break;
+		default: ModeString = TEXT("Unknown"); break;
+		}
+		UE_LOG(LogTemp, Warning, TEXT("Applied and saved window mode: %s"), *ModeString);
+	}
 }
 
 // Input Settings Functions

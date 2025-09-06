@@ -12,7 +12,9 @@
 #include "GameFramework/GameUserSettings.h"
 #include "InputMappingContext.h"
 #include "Widdget/SettingsWidget.h"
+#include "Widdget/ESCWidget.h"
 #include "InputModifiers.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 // Define static member
 const FString AMultiPlayerController::InputSettingsSection = TEXT("FCJ.InputSettings");
@@ -25,6 +27,10 @@ AMultiPlayerController::AMultiPlayerController()
 	ZoomSpeed = 50.0f;
 	MinZoomDistance = 100.0f;
 	MaxZoomDistance = 800.0f;
+	
+	// ESC Menu
+	ESCWidget = nullptr;
+	bIsESCMenuOpen = false;
 }
 
 void AMultiPlayerController::BeginPlay()
@@ -43,15 +49,57 @@ void AMultiPlayerController::BeginPlay()
 		}
 	}
 
+	// Ensure proper input mode for gameplay (fix mouse cursor issue)
+	SetShowMouseCursor(false);
+	SetInputMode(FInputModeGameOnly());
+	UE_LOG(LogTemp, Warning, TEXT("MultiPlayerController BeginPlay: Set input mode to GameOnly"));
+	
+	// Load and apply display settings to ensure they persist across level changes
+	if (UGameUserSettings* GameUserSettings = UGameUserSettings::GetGameUserSettings())
+	{
+		GameUserSettings->LoadSettings();
+		GameUserSettings->ApplySettings(false);
+		UE_LOG(LogTemp, Warning, TEXT("Loaded and applied display settings in game level"));
+	}
+	
+	// Create ESC Widget once at BeginPlay
+	if (ESCWidgetClass)
+	{
+		ESCWidget = CreateWidget<UESCWidget>(this, ESCWidgetClass);
+		if (ESCWidget)
+		{
+			// Bind button callbacks once
+			ESCWidget->OnResumeButtonClicked.AddDynamic(this, &AMultiPlayerController::ResumeGame);
+			ESCWidget->OnMainMenuButtonClicked.AddDynamic(this, &AMultiPlayerController::ReturnToMainMenu);
+			ESCWidget->OnExitGameButtonClicked.AddDynamic(this, &AMultiPlayerController::ExitGame);
+			
+			// Add to viewport but keep hidden initially
+			ESCWidget->AddToViewport();
+			ESCWidget->SetVisibility(ESlateVisibility::Hidden);
+			
+			UE_LOG(LogTemp, Warning, TEXT("ESC Widget created and added to viewport (hidden)"));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to create ESC Widget"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("ESCWidgetClass is not set! Please assign it in Blueprint."));
+	}
 }
 
 void AMultiPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
+	UE_LOG(LogTemp, Warning, TEXT("SetupInputComponent called for MultiPlayerController"));
+
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Enhanced Input Component found"));
 		// Individual Movement Actions
 		if (MoveForwardAction)
 		{
@@ -100,6 +148,17 @@ void AMultiPlayerController::SetupInputComponent()
 		if (ZoomAction)
 		{
 			EnhancedInputComponent->BindAction(ZoomAction, ETriggerEvent::Triggered, this, &AMultiPlayerController::Zoom);
+		}
+
+		// ESC Menu
+		if (ESCAction)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Binding ESCAction"));
+			EnhancedInputComponent->BindAction(ESCAction, ETriggerEvent::Started, this, &AMultiPlayerController::OpenESCMenu);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("ESCAction is null!"));
 		}
 	}
 }
@@ -369,6 +428,85 @@ void AMultiPlayerController::ApplyKeyMappingsFromConfig(const TMap<FString, FStr
 	
 	// Apply the changes
 	ApplyKeyRemapping();
+}
+
+// ESC Menu Functions
+void AMultiPlayerController::OpenESCMenu()
+{
+	UE_LOG(LogTemp, Warning, TEXT("OpenESCMenu called, current state: %s"), bIsESCMenuOpen ? TEXT("Open") : TEXT("Closed"));
+	
+	if (bIsESCMenuOpen)
+	{
+		HideESCMenu();
+	}
+	else
+	{
+		ShowESCMenu();
+	}
+}
+
+
+void AMultiPlayerController::ShowESCMenu()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ShowESCMenu called"));
+	
+	if (ESCWidget)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Showing ESC widget"));
+		ESCWidget->SetVisibility(ESlateVisibility::Visible);
+		
+		// Don't pause the game in multiplayer - just show the menu
+		// Show cursor and set input mode to game and UI
+		SetShowMouseCursor(true);
+		SetInputMode(FInputModeGameAndUI());
+		
+		bIsESCMenuOpen = true;
+		UE_LOG(LogTemp, Warning, TEXT("ESC menu shown successfully"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to show ESC menu - widget is null"));
+	}
+}
+
+void AMultiPlayerController::HideESCMenu()
+{
+	UE_LOG(LogTemp, Warning, TEXT("HideESCMenu called"));
+	if (ESCWidget)
+	{
+		ESCWidget->SetVisibility(ESlateVisibility::Hidden);
+		
+		// Don't resume the game in multiplayer - game was never paused
+		// Hide cursor and set input mode to game only
+		SetShowMouseCursor(false);
+		SetInputMode(FInputModeGameOnly());
+		
+		bIsESCMenuOpen = false;
+		UE_LOG(LogTemp, Warning, TEXT("ESC menu hidden successfully"));
+	}
+}
+
+void AMultiPlayerController::ResumeGame()
+{
+	HideESCMenu();
+}
+
+void AMultiPlayerController::ReturnToMainMenu()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ReturnToMainMenu called"));
+	
+	// Don't need to resume game in multiplayer - game was never paused
+	// UGameplayStatics::SetGamePaused(GetWorld(), false);
+	
+	// Load main menu level
+	UGameplayStatics::OpenLevel(this, FName("MainMenu"));
+}
+
+void AMultiPlayerController::ExitGame()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ExitGame called"));
+	// Exit the game
+	UKismetSystemLibrary::QuitGame(GetWorld(), this, EQuitPreference::Quit, false);
 }
 
 

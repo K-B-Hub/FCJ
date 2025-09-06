@@ -28,7 +28,7 @@ This project uses Unreal Engine 5.6's standard build system:
 ### Module Structure
 - **Main Module**: `FCJ` (Runtime module with Engine and UMG dependencies)
 - **Build Configuration**: Uses PCH (Precompiled Headers) with explicit/shared usage mode
-- **Dependencies**: Core, CoreUObject, Engine, InputCore, EnhancedInput, AIModule
+- **Dependencies**: Core, CoreUObject, Engine, InputCore, EnhancedInput, AIModule, Slate, SlateCore
 
 ### Cooperative Platformer Character System
 The project implements a modular dual-cat cooperative system designed for platformer gameplay:
@@ -37,6 +37,8 @@ The project implements a modular dual-cat cooperative system designed for platfo
    - Third-person camera system optimized for platforming (SpringArm + Camera)
    - Blueprint-configurable platformer settings (jump height, movement speed, air control)
    - Blueprint-configurable camera settings for optimal platforming view angles
+   - Advanced wall jumping system with cooldown and air jump limits
+   - Special action detection box for character-specific interactions
    - Enhanced Input system with responsive platformer controls
    - Virtual special ability system (`OnSpecialAction()` Blueprint event) for cooperative mechanics
    - Movement-responsive rotation with camera-independent controls for precise platforming
@@ -44,27 +46,55 @@ The project implements a modular dual-cat cooperative system designed for platfo
 
 2. **Specialized Cat Characters**: Each cat type brings unique abilities to cooperative gameplay
    - **AAttackCat**: Combat and obstacle-clearing specialist
-     - Melee attacks to break barriers or defeat enemies
-     - Can clear paths for the other cat to follow
-     - Heavy-hitting abilities for puzzle switches or destructible elements
+     - Currently minimal implementation inheriting base abilities
+     - Framework ready for combat-specific features and abilities
+     - Special action system available for future combat mechanics
    
-   - **ABiteCat**: Agility and support specialist  
-     - Enhanced jumping or climbing abilities
-     - Can reach high places to activate switches for the other cat
-     - Bite mechanics for grabbing/carrying objects or helping teammate
+   - **ABiteCat**: Object manipulation and holding specialist  
+     - Advanced object interaction through holding/grabbing mechanics
+     - Can pick up and carry objects with configurable weight limits (`MaxHoldWeight`)
+     - Detects and interacts with `AHoldingObject` instances in the world
+     - Object positioning with configurable hold offsets for realistic carrying
 
 3. **Cooperative Gameplay Controller (AMultiPlayerController)**
-   - Platformer-optimized camera controls with smooth tracking
-   - Responsive input for precise platforming (tight jump timing, wall interactions)
-   - Camera zoom for both close-up precision and wide area awareness
-   - Special action inputs designed for cooperative timing and coordination
-   - Input Mapping Context: IMC_Multi optimized for dual-character coordination
+   - Individual directional input actions (MoveForward, MoveBackward, MoveLeft, MoveRight)
+   - Combined movement system for precise platformer control
+   - Configurable camera controls with mouse sensitivity and Y-axis inversion
+   - Dynamic zoom system with configurable speed and distance limits
+   - Key remapping and settings persistence system
+   - Input Mapping Context with Enhanced Input system integration
+   - ESC menu system with proper input mode management for multiplayer
+   - Display settings persistence across level transitions
 
 4. **Cooperative Game Mode (AMultiGameMode)**
-   - Manages two independent cat characters simultaneously
-   - Blueprint-configurable cat pairings and ability combinations
-   - Supports both local co-op and potential networked cooperative play
-   - Level progression and checkpoint systems for cooperative platforming
+   - Blueprint-configurable player controller and pawn classes
+   - Display settings management and persistence
+   - Supports cooperative gameplay initialization
+   - Framework for level progression and cooperative mechanics
+
+5. **Interactive Actor System**
+   - **AWallJumpObject**: Wall surfaces that enable advanced parkour movement
+     - Configurable wall jump forces (horizontal and vertical)
+     - Detection distance for wall proximity
+     - Wall normal calculation for realistic jump directions
+   
+   - **AHoldingObject**: Interactive objects for BiteCat manipulation
+     - Configurable weight system with collision and physics properties
+     - Hold offset positioning for realistic carrying animations
+     - State tracking (held/released) with proper physics damping
+
+6. **Projectile Combat System**
+   - **AProjectile**: Advanced projectile actors with multiple behavior types
+     - Straight, homing, and guided projectile variants
+     - Physics-based knockback with character state awareness
+     - Configurable damage, speed, and lifetime parameters
+     - Distance-based auto-destruction from spawn volume
+   
+   - **AProjectileVolume**: Area-based projectile spawning system
+     - Multiple launch modes (targeted, random, mixed)
+     - Configurable spawn rates and simultaneous projectile limits
+     - Player detection and targeting system
+     - Blueprint-exposed Korean tooltips for designer-friendly configuration
 
 ### Game Mode Structure
 - **AMultiGameMode**: Cooperative platformer game mode
@@ -81,23 +111,43 @@ The project implements a modular dual-cat cooperative system designed for platfo
   - Settings: Configure controls for both cats
   - Level selection and cooperative challenge modes
 
+- **USettingsWidget**: Configuration interface for game settings
+  - Input sensitivity and control customization
+  - Key remapping interface with controller integration
+  - Display and graphics settings management with immediate application
+  - Resolution and window mode changes applied instantly without save button
+
+- **UESCWidget**: In-game pause menu system
+  - Non-pausing multiplayer-friendly design
+  - Resume game, return to main menu, and exit options
+  - Created once at controller BeginPlay and toggled via visibility
+  - ESCAction binding for keyboard accessibility
+
 ## File Organization
 
 ```
 Source/FCJ/
 ├── FCJ.cpp/h                    # Main module files
+├── FCJ.Build.cs                 # Module build configuration
 ├── GameMode/                    # Game mode implementations
 │   ├── MultiGameMode.cpp/h      # Main multiplayer game mode
 │   └── MainMenuGameMode.cpp/h   # Menu mode
 ├── PlayerCharacter/             # Character implementations
-│   ├── CatBase.cpp/h           # Base character class
-│   ├── AttackCat.cpp/h         # Combat-focused variant
-│   └── BiteCat.cpp/h           # Bite-focused variant
+│   ├── CatBase.cpp/h           # Base character class with wall jump & special actions
+│   ├── AttackCat.cpp/h         # Combat-focused variant (minimal implementation)
+│   └── BiteCat.cpp/h           # Object holding/grabbing specialist
 ├── PlayerController/            # Controller implementations
-│   ├── MultiPlayerController.cpp/h # Enhanced Input controller
+│   ├── MultiPlayerController.cpp/h # Enhanced Input with individual direction controls
 │   └── MainMenuController.cpp/h
+├── Actor/                       # Game objects and actors
+│   ├── WallJumpObject.cpp/h    # Wall surfaces for wall jumping mechanics
+│   ├── HoldingObject.cpp/h     # Objects that can be grabbed by BiteCat
+│   ├── Projectile.cpp/h        # Advanced projectile system with homing and knockback
+│   └── ProjectileVolume.cpp/h  # Spawns and manages projectiles in designated areas
 └── Widdget/                     # UI widgets (note: typo in folder name)
-    └── MainMenuWidget.cpp/h
+    ├── MainMenuWidget.cpp/h    # Main menu interface
+    ├── SettingsWidget.cpp/h    # Settings configuration UI
+    └── ESCWidget.cpp/h         # In-game pause menu with resume/main menu/exit options
 ```
 
 ### Content Structure
@@ -128,10 +178,19 @@ Source/FCJ/
 - Special action inputs designed for timing-critical cooperative maneuvers
 
 ### Specialized Ability System
-- **AttackCat Abilities**: Barrier destruction, enemy combat, heavy switch activation
-- **BiteCat Abilities**: Enhanced jumping, climbing, object manipulation, teammate assistance
-- Base class framework allows easy extension with new cat types and abilities
-- Blueprint events enable complex cooperative interactions and puzzle mechanics
+- **AttackCat Framework**: Ready for combat implementation with special action system
+  - Inherits all base platforming capabilities including wall jumping
+  - Special action box configured for future combat/attack mechanics
+  - Framework established for barrier destruction and combat features
+
+- **BiteCat Object Interaction**: Advanced holding and manipulation system  
+  - Object detection and weight-based interaction system
+  - Hold/release mechanics with proper physics integration
+  - Configurable object positioning and carrying mechanics
+  - Integration with AHoldingObject actors for puzzle elements
+
+- **Base Class Extensibility**: Virtual special action system supports new cat types
+- **Blueprint Integration**: OnSpecialAction() event for complex cooperative mechanics
 
 ### Cooperative Game Flow
 - Level design supports dual-character progression (one cat opens path for other)
@@ -147,22 +206,47 @@ Source/FCJ/
 - Dynamic zoom system for close-up precision work and wide-area cooperative planning
 - Camera positioning designed to show both cats and cooperative interaction opportunities
 
-### Cooperative Input Configuration
-- **Input Mapping Context**: IMC_Multi designed for dual-character coordination
-- **Core Actions**: 
-  - Move (Vector2D): Precise platformer movement with responsive controls
-  - Look (Vector2D): Camera control for cooperative awareness  
-  - Jump (Digital): Tight platformer jumping with air control
-  - SpecialAction (Digital): Cat-specific abilities (Attack/Bite mechanics)
-  - ZoomAction (Axis1D): Dynamic camera zoom for precision and overview
-- Configurable sensitivity settings for both precision platforming and cooperative coordination
-- Input system supports both local co-op (shared input device) and networked play
+### Enhanced Input System Configuration
+- **Individual Directional Controls**: Separate actions for each movement direction
+  - MoveForwardAction, MoveBackwardAction, MoveLeftAction, MoveRightAction
+  - Combined movement calculation for precise platformer control
+  - Allows for complex movement combinations and fine-tuned platforming
+- **Core Input Actions**:
+  - LookAction (Vector2D): Camera control with configurable sensitivity
+  - JumpAction (Digital): Standard and wall jump capabilities
+  - SpecialAction (Digital): Character-specific abilities (holding, combat framework)
+  - ZoomAction (Axis1D): Dynamic camera zoom with speed and limit controls
+  - ESCAction (Digital): In-game menu toggle (note: ESC key may be reserved in editor)
+- **Settings System**: Persistent configuration for mouse sensitivity, Y-axis inversion, and key remapping
+- **Enhanced Input Integration**: Full UE5 Enhanced Input system with mapping context support
 
-### Cooperative Mechanics Framework
-- Virtual special action system enables unique cooperative abilities per cat type
-- Blueprint event system for complex cat-to-cat interactions and puzzle solutions
-- Character movement optimized for platformer physics with cooperative considerations
-- Base architecture supports extension to additional cat types with new cooperative abilities
+### Advanced Mechanics Implementation
+- **Wall Jump System**: Sophisticated platforming with detection radius, cooldown timers, and air jump limits
+  - Integration with AWallJumpObject actors for level design flexibility
+  - Configurable wall jump forces and detection parameters
+  - Cooldown system prevents infinite wall jumping exploits
+
+- **Object Interaction Framework**: Complete holding/carrying system for puzzle mechanics
+  - Weight-based interaction limits and physics integration
+  - State management for held objects with proper collision handling
+  - Configurable hold offsets for realistic character animations
+
+- **Virtual Special Action System**: Blueprint-extensible framework for character abilities
+- **Modular Architecture**: Easy addition of new cat types with unique cooperative abilities
+- **Enhanced Input Integration**: Responsive controls optimized for precise platforming gameplay
+
+- **Projectile Combat System**: Multi-type projectile system with physics integration
+  - Three projectile types: Straight, Homing, and Slight Guided behaviors
+  - Knockback system with unified horizontal + vertical force application
+  - Volume-based spawning with configurable targeting and spawn patterns
+  - Distance-based cleanup to prevent performance issues
+  - Korean localized Blueprint tooltips for level designers
+
+- **UI State Management**: Robust widget lifecycle and input mode handling
+  - Settings applied immediately without save dependency for better UX
+  - ESC menu created once and toggled via visibility for performance
+  - Proper input mode transitions (GameOnly ↔ GameAndUI) for multiplayer compatibility
+  - Display setting persistence across level changes through GameUserSettings
 
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.

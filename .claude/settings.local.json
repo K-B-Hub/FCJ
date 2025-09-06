@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/E:\\UE5\\Project\\FCJ/**)",
+      "Read(/E:\\UE5\\Project\\FCJ/**)",
+      "Read(/E:\\UE5\\Project\\FCJ\\Source/**)",
+      "Read(/E:\\UE5\\Project\\FCJ\\Source/**)",
+      "Read(/E:\\UE5\\Project\\FCJ\\Source\\FCJ/**)",
+      "Read(/E:\\UE5\\Project\\FCJ\\Source\\FCJ\\PlayerCharacter/**)",
+      "Read(/E:\\UE5\\Project\\FCJ\\Source\\FCJ\\PlayerCharacter/**)",
+      "Read(/E:\\UE5\\Project\\FCJ\\Source\\FCJ\\Actor/**)",
+      "Read(/E:\\UE5\\Project\\FCJ\\Source\\FCJ\\Actor/**)",
+      "Read(/E:\\UE5\\Project\\FCJ\\Source\\FCJ\\PlayerCharacter/**)",
+      "Read(/E:\\UE5\\Project\\FCJ\\Source\\FCJ\\PlayerCharacter/**)",
+      "Read(/E:\\UE5\\Project\\FCJ\\Source\\FCJ\\Actor/**)",
+      "Read(/E:\\UE5\\Project\\FCJ\\Source\\FCJ\\Actor/**)",
+      "Read(/E:\\UE5\\Project\\FCJ\\Source\\FCJ\\PlayerCharacter/**)",
+      "Read(/E:\\UE5\\Project\\FCJ\\Source\\FCJ\\Actor/**)",
+      "Read(/E:\\UE5\\Project\\FCJ\\Source\\FCJ\\Actor/**)",
+      "Read(/E:\\UE5\\Project\\FCJ\\Source\\FCJ\\Actor/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

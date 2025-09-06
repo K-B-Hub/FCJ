@@ -51,6 +51,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	UInputAction* ZoomAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	UInputAction* ESCAction;
+	
+	// ESC Menu
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+	TSubclassOf<class UESCWidget> ESCWidgetClass;
+
 public:
 	// Input settings - made public for SettingsWidget access
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input Settings")
@@ -81,6 +88,7 @@ protected:
 	void StopJumping();
 	void PerformSpecialAction();
 	void Zoom(const FInputActionValue& Value);
+	void OpenESCMenu();
 
 private:
 	// Current movement input values for each direction
@@ -151,4 +159,23 @@ private:
 
 	// Helper function to apply key mappings from config
 	void ApplyKeyMappingsFromConfig(const TMap<FString, FString>& KeyMappings);
+
+	UPROPERTY()
+	class UESCWidget* ESCWidget;
+
+	bool bIsESCMenuOpen;
+
+	void ShowESCMenu();
+	void HideESCMenu();
+
+public:
+	// ESC Menu functions
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ResumeGame();
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ReturnToMainMenu();
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ExitGame();
 };
