@@ -23,7 +23,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Classes")
 	TSubclassOf<class APawn> DefaultPawnClass_Multi;
 
+protected:
+	virtual void BeginPlay() override;
+
 public:
 	// Override to set custom classes
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
+
+private:
+	// Apply saved display settings
+	void ApplySavedDisplaySettings();
 }; 

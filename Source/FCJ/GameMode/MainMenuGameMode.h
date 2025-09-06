@@ -21,6 +21,8 @@ protected:
 	virtual void BeginPlay() override;
 
 private:
+	// Apply saved display settings
+	void ApplySavedDisplaySettings();
 	UPROPERTY(EditDefaultsOnly, Category = "Widget")
 	TSubclassOf<class UMainMenuWidget> MainMenuWidgetClass;
 

@@ -13,5 +13,7 @@ UCLASS()
 class FCJ_API AMainMenuController : public APlayerController
 {
 	GENERATED_BODY()
-	
+
+public:
+	virtual void BeginPlay() override;
 };

@@ -7,6 +7,17 @@
 #include "PlayerCharacter/CatBase.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Engine/Engine.h"
+#include "Kismet/GameplayStatics.h"
+#include "GameFramework/GameUserSettings.h"
+#include "InputMappingContext.h"
+#include "Widdget/SettingsWidget.h"
+#include "Widdget/ESCWidget.h"
+#include "InputModifiers.h"
+#include "Kismet/KismetSystemLibrary.h"
+
+// Define static member
+const FString AMultiPlayerController::InputSettingsSection = TEXT("FCJ.InputSettings");
 
 AMultiPlayerController::AMultiPlayerController()
 {
@@ -16,11 +27,18 @@ AMultiPlayerController::AMultiPlayerController()
 	ZoomSpeed = 50.0f;
 	MinZoomDistance = 100.0f;
 	MaxZoomDistance = 800.0f;
+	
+	// ESC Menu
+	ESCWidget = nullptr;
+	bIsESCMenuOpen = false;
 }
 
 void AMultiPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Load input settings from config
+	LoadInputSettings();
 
 	// Add Input Mapping Context
 	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
@@ -30,19 +48,81 @@ void AMultiPlayerController::BeginPlay()
 			Subsystem->AddMappingContext(DefaultMappingContext, 0);
 		}
 	}
+
+	// Ensure proper input mode for gameplay (fix mouse cursor issue)
+	SetShowMouseCursor(false);
+	SetInputMode(FInputModeGameOnly());
+	UE_LOG(LogTemp, Warning, TEXT("MultiPlayerController BeginPlay: Set input mode to GameOnly"));
+	
+	// Load and apply display settings to ensure they persist across level changes
+	if (UGameUserSettings* GameUserSettings = UGameUserSettings::GetGameUserSettings())
+	{
+		GameUserSettings->LoadSettings();
+		GameUserSettings->ApplySettings(false);
+		UE_LOG(LogTemp, Warning, TEXT("Loaded and applied display settings in game level"));
+	}
+	
+	// Create ESC Widget once at BeginPlay
+	if (ESCWidgetClass)
+	{
+		ESCWidget = CreateWidget<UESCWidget>(this, ESCWidgetClass);
+		if (ESCWidget)
+		{
+			// Bind button callbacks once
+			ESCWidget->OnResumeButtonClicked.AddDynamic(this, &AMultiPlayerController::ResumeGame);
+			ESCWidget->OnMainMenuButtonClicked.AddDynamic(this, &AMultiPlayerController::ReturnToMainMenu);
+			ESCWidget->OnExitGameButtonClicked.AddDynamic(this, &AMultiPlayerController::ExitGame);
+			
+			// Add to viewport but keep hidden initially
+			ESCWidget->AddToViewport();
+			ESCWidget->SetVisibility(ESlateVisibility::Hidden);
+			
+			UE_LOG(LogTemp, Warning, TEXT("ESC Widget created and added to viewport (hidden)"));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to create ESC Widget"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("ESCWidgetClass is not set! Please assign it in Blueprint."));
+	}
 }
 
 void AMultiPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
+	UE_LOG(LogTemp, Warning, TEXT("SetupInputComponent called for MultiPlayerController"));
+
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent))
 	{
-		// Moving
-		if (MoveAction)
+		UE_LOG(LogTemp, Warning, TEXT("Enhanced Input Component found"));
+		// Individual Movement Actions
+		if (MoveForwardAction)
 		{
-			EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AMultiPlayerController::Move);
+			EnhancedInputComponent->BindAction(MoveForwardAction, ETriggerEvent::Triggered, this, &AMultiPlayerController::MoveForward);
+			EnhancedInputComponent->BindAction(MoveForwardAction, ETriggerEvent::Completed, this, &AMultiPlayerController::MoveForward);
+		}
+		
+		if (MoveBackwardAction)
+		{
+			EnhancedInputComponent->BindAction(MoveBackwardAction, ETriggerEvent::Triggered, this, &AMultiPlayerController::MoveBackward);
+			EnhancedInputComponent->BindAction(MoveBackwardAction, ETriggerEvent::Completed, this, &AMultiPlayerController::MoveBackward);
+		}
+		
+		if (MoveLeftAction)
+		{
+			EnhancedInputComponent->BindAction(MoveLeftAction, ETriggerEvent::Triggered, this, &AMultiPlayerController::MoveLeft);
+			EnhancedInputComponent->BindAction(MoveLeftAction, ETriggerEvent::Completed, this, &AMultiPlayerController::MoveLeft);
+		}
+		
+		if (MoveRightAction)
+		{
+			EnhancedInputComponent->BindAction(MoveRightAction, ETriggerEvent::Triggered, this, &AMultiPlayerController::MoveRight);
+			EnhancedInputComponent->BindAction(MoveRightAction, ETriggerEvent::Completed, this, &AMultiPlayerController::MoveRight);
 		}
 
 		// Looking
@@ -69,14 +149,48 @@ void AMultiPlayerController::SetupInputComponent()
 		{
 			EnhancedInputComponent->BindAction(ZoomAction, ETriggerEvent::Triggered, this, &AMultiPlayerController::Zoom);
 		}
+
+		// ESC Menu
+		if (ESCAction)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Binding ESCAction"));
+			EnhancedInputComponent->BindAction(ESCAction, ETriggerEvent::Started, this, &AMultiPlayerController::OpenESCMenu);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("ESCAction is null!"));
+		}
 	}
 }
 
-void AMultiPlayerController::Move(const FInputActionValue& Value)
-{
-	// Input is a Vector2D
-	FVector2D MovementVector = Value.Get<FVector2D>();
 
+// Individual movement functions
+void AMultiPlayerController::MoveForward(const FInputActionValue& Value)
+{
+	ForwardInputValue = Value.Get<float>();
+	ApplyCombinedMovement();
+}
+
+void AMultiPlayerController::MoveBackward(const FInputActionValue& Value)
+{
+	BackwardInputValue = Value.Get<float>();
+	ApplyCombinedMovement();
+}
+
+void AMultiPlayerController::MoveLeft(const FInputActionValue& Value)
+{
+	LeftInputValue = Value.Get<float>();
+	ApplyCombinedMovement();
+}
+
+void AMultiPlayerController::MoveRight(const FInputActionValue& Value)
+{
+	RightInputValue = Value.Get<float>();
+	ApplyCombinedMovement();
+}
+
+void AMultiPlayerController::ApplyCombinedMovement()
+{
 	if (APawn* ControlledPawn = GetPawn())
 	{
 		if (ACharacter* character = Cast<ACharacter>(ControlledPawn))
@@ -91,9 +205,14 @@ void AMultiPlayerController::Move(const FInputActionValue& Value)
 			// Get right vector 
 			const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
-			// Add movement 
-			character->AddMovementInput(ForwardDirection, MovementVector.Y);
-			character->AddMovementInput(RightDirection, MovementVector.X);
+			// Calculate net movement values
+			float NetForwardInput = ForwardInputValue - BackwardInputValue;
+			float NetRightInput = RightInputValue - LeftInputValue;
+
+			// Apply combined movement
+			character->AddMovementInput(ForwardDirection, NetForwardInput);
+			character->AddMovementInput(RightDirection, NetRightInput);
+			
 		}
 	}
 }
@@ -174,4 +293,220 @@ void AMultiPlayerController::Zoom(const FInputActionValue& Value)
 		}
 	}
 }
+
+void AMultiPlayerController::LoadInputSettings()
+{
+	// Use SettingsWidget's static function to load settings
+	TMap<FString, FString> KeyMappings;
+	USettingsWidget::LoadInputSettingsFromConfig(MouseSensitivity, bInvertMouseY, ZoomSpeed, KeyMappings);
+	
+	// Apply key mappings to the input system
+	ApplyKeyMappingsFromConfig(KeyMappings);
+}
+
+void AMultiPlayerController::SaveInputSettings()
+{
+	// This function now primarily for compatibility
+	// Actual saving is handled by SettingsWidget's static functions
+	TMap<FString, FString> CurrentKeyMappings;
+	// TODO: Get current key mappings if needed
+	USettingsWidget::SaveInputSettingsToConfig(MouseSensitivity, bInvertMouseY, ZoomSpeed, CurrentKeyMappings);
+}
+
+void AMultiPlayerController::ApplyKeyRemapping()
+{
+	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+	{
+		if (DefaultMappingContext)
+		{
+			// Remove and re-add the mapping context to apply changes
+			Subsystem->RemoveMappingContext(DefaultMappingContext);
+			Subsystem->AddMappingContext(DefaultMappingContext, 0);
+		}
+	}
+}
+
+TArray<FKey> AMultiPlayerController::GetDefaultKeysForAction(UInputAction* Action)
+{
+	TArray<FKey> Keys;
+	
+	if (DefaultMappingContext && Action)
+	{
+		const TArray<FEnhancedActionKeyMapping>& Mappings = DefaultMappingContext->GetMappings();
+		for (const FEnhancedActionKeyMapping& Mapping : Mappings)
+		{
+			if (Mapping.Action == Action)
+			{
+				Keys.Add(Mapping.Key);
+			}
+		}
+	}
+	
+	return Keys;
+}
+
+void AMultiPlayerController::SetKeyForAction(UInputAction* Action, const FKey& NewKey)
+{
+	if (DefaultMappingContext && Action)
+	{
+		// Remove existing mappings for this action
+		TArray<FEnhancedActionKeyMapping> Mappings = DefaultMappingContext->GetMappings();
+		for (int32 i = Mappings.Num() - 1; i >= 0; i--)
+		{
+			if (Mappings[i].Action == Action)
+			{
+				DefaultMappingContext->UnmapKey(Action, Mappings[i].Key);
+			}
+		}
+		
+		// Add new mapping
+		FEnhancedActionKeyMapping NewMapping;
+		NewMapping.Action = Action;
+		NewMapping.Key = NewKey;
+		DefaultMappingContext->MapKey(Action, NewKey);
+		
+		// Apply the changes
+		ApplyKeyRemapping();
+		
+		// Save the key mapping to config
+		if (GConfig)
+		{
+			FString ActionName = Action->GetName();
+			GConfig->SetString(*InputSettingsSection, *ActionName, *NewKey.ToString(), GGameUserSettingsIni);
+			GConfig->Flush(false, GGameUserSettingsIni);
+		}
+	}
+}
+
+void AMultiPlayerController::ApplyKeyMappingsFromConfig(const TMap<FString, FString>& KeyMappings)
+{
+	if (!DefaultMappingContext)
+	{
+		UE_LOG(LogTemp, Error, TEXT("DefaultMappingContext is null!"));
+		return;
+	}
+
+	
+	// Apply key mappings to input actions
+	for (const auto& Pair : KeyMappings)
+	{
+		FKey NewKey(*Pair.Value);
+		
+		if (NewKey.IsValid())
+		{
+			// Individual Movement Actions
+			if (Pair.Key == TEXT("MoveForward") && MoveForwardAction)
+			{
+				SetKeyForAction(MoveForwardAction, NewKey);
+			}
+			else if (Pair.Key == TEXT("MoveBackward") && MoveBackwardAction)
+			{
+				SetKeyForAction(MoveBackwardAction, NewKey);
+			}
+			else if (Pair.Key == TEXT("MoveLeft") && MoveLeftAction)
+			{
+				SetKeyForAction(MoveLeftAction, NewKey);
+			}
+			else if (Pair.Key == TEXT("MoveRight") && MoveRightAction)
+			{
+				SetKeyForAction(MoveRightAction, NewKey);
+			}
+			else if (Pair.Key == TEXT("Jump") && JumpAction)
+			{
+				SetKeyForAction(JumpAction, NewKey);
+			}
+			else if (Pair.Key == TEXT("Action") && SpecialAction)
+			{
+				SetKeyForAction(SpecialAction, NewKey);
+			}
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("Invalid key: %s"), *Pair.Value);
+		}
+	}
+	
+	// Apply the changes
+	ApplyKeyRemapping();
+}
+
+// ESC Menu Functions
+void AMultiPlayerController::OpenESCMenu()
+{
+	UE_LOG(LogTemp, Warning, TEXT("OpenESCMenu called, current state: %s"), bIsESCMenuOpen ? TEXT("Open") : TEXT("Closed"));
+	
+	if (bIsESCMenuOpen)
+	{
+		HideESCMenu();
+	}
+	else
+	{
+		ShowESCMenu();
+	}
+}
+
+
+void AMultiPlayerController::ShowESCMenu()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ShowESCMenu called"));
+	
+	if (ESCWidget)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Showing ESC widget"));
+		ESCWidget->SetVisibility(ESlateVisibility::Visible);
+		
+		// Don't pause the game in multiplayer - just show the menu
+		// Show cursor and set input mode to game and UI
+		SetShowMouseCursor(true);
+		SetInputMode(FInputModeGameAndUI());
+		
+		bIsESCMenuOpen = true;
+		UE_LOG(LogTemp, Warning, TEXT("ESC menu shown successfully"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to show ESC menu - widget is null"));
+	}
+}
+
+void AMultiPlayerController::HideESCMenu()
+{
+	UE_LOG(LogTemp, Warning, TEXT("HideESCMenu called"));
+	if (ESCWidget)
+	{
+		ESCWidget->SetVisibility(ESlateVisibility::Hidden);
+		
+		// Don't resume the game in multiplayer - game was never paused
+		// Hide cursor and set input mode to game only
+		SetShowMouseCursor(false);
+		SetInputMode(FInputModeGameOnly());
+		
+		bIsESCMenuOpen = false;
+		UE_LOG(LogTemp, Warning, TEXT("ESC menu hidden successfully"));
+	}
+}
+
+void AMultiPlayerController::ResumeGame()
+{
+	HideESCMenu();
+}
+
+void AMultiPlayerController::ReturnToMainMenu()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ReturnToMainMenu called"));
+	
+	// Don't need to resume game in multiplayer - game was never paused
+	// UGameplayStatics::SetGamePaused(GetWorld(), false);
+	
+	// Load main menu level
+	UGameplayStatics::OpenLevel(this, FName("MainMenu"));
+}
+
+void AMultiPlayerController::ExitGame()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ExitGame called"));
+	// Exit the game
+	UKismetSystemLibrary::QuitGame(GetWorld(), this, EQuitPreference::Quit, false);
+}
+
 

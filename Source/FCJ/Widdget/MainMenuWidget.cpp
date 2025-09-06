@@ -4,6 +4,8 @@
 #include "MainMenuWidget.h"
 #include "Components/Button.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetSystemLibrary.h"
+#include "SettingsWidget.h"
 
 void UMainMenuWidget::NativeConstruct()
 {
@@ -28,21 +30,41 @@ void UMainMenuWidget::NativeConstruct()
 	{
 		ExitButton->OnClicked.AddDynamic(this, &UMainMenuWidget::OnExitClicked);
 	}
+
+	if (SettingsWidget)
+	{
+		SettingsWidget->OnBackButtonClicked.AddDynamic(this, &UMainMenuWidget::OnSettingsBackClicked);
+		SettingsWidget->SetVisibility(ESlateVisibility::Hidden);
+	}
 }
 
 void UMainMenuWidget::OnLocalPlayClicked()
 {
-    UGameplayStatics::OpenLevel(GetWorld(), TEXT("/Game/Levels/Test"), true);
+    
 }
 
 void UMainMenuWidget::OnMultiPlayClicked()
 {
+	UGameplayStatics::OpenLevel(GetWorld(), TEXT("/Game/Levels/Test"), true);
 }
 
 void UMainMenuWidget::OnSettingClicked()
 {
+	if (SettingsWidget)
+	{
+		SettingsWidget->SetVisibility(ESlateVisibility::Visible);
+	}
 }
 
 void UMainMenuWidget::OnExitClicked()
 {
+	UKismetSystemLibrary::QuitGame(GetWorld(), GetOwningPlayer(), EQuitPreference::Quit, true);
+}
+
+void UMainMenuWidget::OnSettingsBackClicked()
+{
+	if (SettingsWidget)
+	{
+		SettingsWidget->SetVisibility(ESlateVisibility::Hidden);
+	}
 }

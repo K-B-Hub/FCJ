@@ -7,6 +7,7 @@
 #include "MainMenuWidget.generated.h"
 
 class UButton;
+class USettingsWidget;
 
 /**
  * 
@@ -43,5 +44,11 @@ private:
 
 	UFUNCTION()
 	void OnExitClicked();
+
+	UFUNCTION()
+	void OnSettingsBackClicked();
+
+	UPROPERTY(meta = (BindWidget))
+	USettingsWidget* SettingsWidget;
 	
 };
