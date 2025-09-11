@@ -68,3 +68,33 @@ FVector AWallJumpObject::GetWallNormal(const FVector& PlayerLocation) const
 	return DirectionToPlayer;
 }
 
+bool AWallJumpObject::CanParkour(const FVector& CharacterLocation) const
+{
+	if (!bCanParkour)
+	{
+		return false;
+	}
+
+	float Distance = FVector::Dist(GetActorLocation(), CharacterLocation);
+	return Distance <= ParkourDetectionDistance;
+}
+
+FVector AWallJumpObject::GetParkourStartLocation() const
+{
+	return GetActorLocation() + GetActorTransform().TransformVectorNoScale(ParkourStartOffset);
+}
+
+FVector AWallJumpObject::GetParkourTargetLocation() const
+{
+	return GetActorLocation() + GetActorTransform().TransformVectorNoScale(ParkourTargetOffset);
+}
+
+FVector AWallJumpObject::GetParkourDirection() const
+{
+	FVector StartLocation = GetParkourStartLocation();
+	FVector TargetLocation = GetParkourTargetLocation();
+	
+	FVector Direction = (TargetLocation - StartLocation).GetSafeNormal();
+	return Direction;
+}
+

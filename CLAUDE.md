@@ -29,6 +29,7 @@ This project uses Unreal Engine 5.6's standard build system:
 - **Main Module**: `FCJ` (Runtime module with Engine and UMG dependencies)
 - **Build Configuration**: Uses PCH (Precompiled Headers) with explicit/shared usage mode
 - **Dependencies**: Core, CoreUObject, Engine, InputCore, EnhancedInput, AIModule, Slate, SlateCore
+- **Note**: MotionWarping was removed from dependencies - parkour system now uses pure root motion with Flying movement mode
 
 ### Cooperative Platformer Character System
 The project implements a modular dual-cat cooperative system designed for platformer gameplay:
@@ -38,6 +39,11 @@ The project implements a modular dual-cat cooperative system designed for platfo
    - Blueprint-configurable platformer settings (jump height, movement speed, air control)
    - Blueprint-configurable camera settings for optimal platforming view angles
    - Advanced wall jumping system with cooldown and air jump limits
+   - **Parkour System**: Box collision-based root motion climbing system
+     - Dual box collision detection (ParkourLowerBox and ParkourUpperBox)
+     - Lower box must overlap with StaticMesh, upper box must not overlap
+     - Uses Flying movement mode during parkour for proper Z-axis root motion
+     - Pure root motion animation without Motion Warping dependency
    - Special action detection box for character-specific interactions
    - Enhanced Input system with responsive platformer controls
    - Virtual special ability system (`OnSpecialAction()` Blueprint event) for cooperative mechanics
@@ -225,6 +231,19 @@ Source/FCJ/
   - Integration with AWallJumpObject actors for level design flexibility
   - Configurable wall jump forces and detection parameters
   - Cooldown system prevents infinite wall jumping exploits
+
+- **Parkour System**: Box collision-based root motion climbing for waist-level obstacles
+  - **Dual Box Detection**: Uses two UBoxComponent instances for precise parkour detection
+    - ParkourLowerBox: Must overlap with StaticMesh objects (something to climb)
+    - ParkourUpperBox: Must NOT overlap with StaticMesh objects (clear space above)
+  - **Collision Configuration**: 
+    - ECollisionChannel::ECC_WorldStatic overlap response only
+    - ECC_Pawn set to ECR_Ignore to prevent character self-overlap
+    - QueryOnly collision enabled, no physics interaction
+  - **Detection Logic**: Uses GetOverlappingActors() with UpdateOverlaps() for reliable detection
+  - **Movement Mode Management**: Switches to Flying mode during parkour for Z-axis root motion
+  - **Root Motion Priority**: Pure animation-driven movement without Motion Warping dependency
+  - **Jump Priority**: Parkour → Wall Jump → Normal Jump execution order
 
 - **Object Interaction Framework**: Complete holding/carrying system for puzzle mechanics
   - Weight-based interaction limits and physics integration
