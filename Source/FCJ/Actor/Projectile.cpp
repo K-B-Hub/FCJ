@@ -168,7 +168,7 @@ void AProjectile::UpdateMovement(float DeltaTime)
 
 void AProjectile::HandleHomingMovement(float DeltaTime)
 {
-	if (!TargetCharacter || !IsValid(TargetCharacter))
+	if (!TargetCharacter || !IsValid(TargetCharacter) || bIsParried)
 	{
 		ProjectileMovement->bIsHomingProjectile = false;
 		return;
@@ -177,7 +177,7 @@ void AProjectile::HandleHomingMovement(float DeltaTime)
 
 void AProjectile::HandleSlightGuidedMovement(float DeltaTime)
 {
-	if (!TargetCharacter || !IsValid(TargetCharacter))
+	if (!TargetCharacter || !IsValid(TargetCharacter) || bIsParried)
 	{
 		return;
 	}

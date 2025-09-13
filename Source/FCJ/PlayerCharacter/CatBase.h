@@ -119,6 +119,9 @@ private:
 	bool bIsPerformingParkour = false;
 	AActor* CurrentParkourActor = nullptr;
 
+	// Montage playing state
+	bool bIsMontageePlaying = false;
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -168,6 +171,13 @@ public:
 
 	// Parkour completion callback
 	void OnParkourMontageCompleted();
+
+	// Montage state management
+	UFUNCTION(BlueprintCallable, Category = "Animation")
+	bool IsPlayingMontage() const { return bIsMontageePlaying; }
+
+	UFUNCTION(BlueprintCallable, Category = "Animation")
+	void SetMontageePlaying(bool InPlaying) { bIsMontageePlaying = InPlaying; }
 
 	// Public getters for components
 	UFUNCTION(BlueprintCallable, Category = "Camera")

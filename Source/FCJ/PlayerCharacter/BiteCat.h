@@ -20,10 +20,10 @@ protected:
 	// 현재 잡고 있는 오브젝트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Holding")
 	AHoldingObject* CurrentHeldObject;
-
-	// 잡을 수 있는 최대 무게
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Holding Settings", meta = (ToolTip = "BiteCat이 잡을 수 있는 최대 무게를 설정합니다"))
-	float MaxHoldWeight = 2.0f;
+	
+	// 물체를 던질 때의 힘
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Holding Settings", meta = (ToolTip = "물체를 던질 때 가해지는 힘의 크기를 설정합니다"))
+	float ThrowForce = 1200.0f;
 
 public:
 	// PerformSpecialAction 오버라이드 (잡기 기능)
@@ -41,6 +41,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Holding")
 	void ReleaseObject();
+
+	UFUNCTION(BlueprintCallable, Category = "Holding")
+	void ThrowObject();
 
 	UFUNCTION(BlueprintCallable, Category = "Holding")
 	bool IsHoldingObject() const { return CurrentHeldObject != nullptr; }

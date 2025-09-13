@@ -16,12 +16,12 @@ void ABiteCat::PerformSpecialAction()
 {
 	UE_LOG(LogTemp, Warning, TEXT("BiteCat PerformSpecialAction called"));
 
-	// BiteCat의 특수 행동: 잡기/놓기
+	// BiteCat의 특수 행동: 잡기/던지기
 	if (IsHoldingObject())
 	{
-		// 현재 오브젝트를 들고 있다면 놓기
-		UE_LOG(LogTemp, Warning, TEXT("Releasing held object"));
-		ReleaseObject();
+		// 현재 오브젝트를 들고 있다면 던지기
+		UE_LOG(LogTemp, Warning, TEXT("Throwing held object"));
+		ThrowObject();
 	}
 	else
 	{
@@ -36,8 +36,7 @@ void ABiteCat::PerformSpecialAction()
 		}
 		else if (NearestObject)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Cannot hold object - Weight: %f, MaxWeight: %f"), 
-				NearestObject->GetWeight(), MaxHoldWeight);
+			UE_LOG(LogTemp, Warning, TEXT("Cannot hold object - Object may already be held or other restriction"));
 		}
 	}
 
@@ -97,11 +96,11 @@ bool ABiteCat::CanHoldObject(AHoldingObject* Object) const
 		return false;
 	}
 
-	// 무게 제한 체크
-	if (Object->GetWeight() > MaxHoldWeight)
-	{
-		return false;
-	}
+	// 무게 제한 체크 제거 - 모든 HoldingObject를 잡을 수 있음
+	// if (Object->GetWeight() > MaxHoldWeight)
+	// {
+	// 	return false;
+	// }
 
 	return true;
 }
@@ -130,5 +129,45 @@ void ABiteCat::ReleaseObject()
 	CurrentHeldObject = nullptr;
 
 	UE_LOG(LogTemp, Warning, TEXT("BiteCat released object"));
+}
+
+void ABiteCat::ThrowObject()
+{
+	if (!CurrentHeldObject)
+	{
+		return;
+	}
+
+	// 캐릭터의 전방 방향 계산
+	FVector ForwardDirection = GetActorForwardVector();
+	
+	// 던질 방향에 약간의 위쪽 각도 추가 (포물선 궤적을 위해)
+	FVector ThrowDirection = ForwardDirection + FVector(0.0f, 0.0f, 0.3f);
+	ThrowDirection.Normalize();
+
+	// 오브젝트를 놓기
+	AHoldingObject* ObjectToThrow = CurrentHeldObject;
+	CurrentHeldObject->OnReleased();
+	CurrentHeldObject = nullptr;
+
+	// HoldingObject는 CollisionComponent에 물리가 설정되어 있으므로 CollisionComponent에 힘을 가함
+	if (UBoxComponent* CollisionComp = ObjectToThrow->FindComponentByClass<UBoxComponent>())
+	{
+		if (CollisionComp->IsSimulatingPhysics())
+		{
+			// 임펄스로 던지기
+			FVector ThrowImpulse = ThrowDirection * ThrowForce * CollisionComp->GetMass();
+			CollisionComp->AddImpulse(ThrowImpulse);
+		}
+		else
+		{
+			// 물리 시뮬레이션이 비활성화되어 있다면 활성화하고 던지기
+			CollisionComp->SetSimulatePhysics(true);
+			FVector ThrowImpulse = ThrowDirection * ThrowForce * CollisionComp->GetMass();
+			CollisionComp->AddImpulse(ThrowImpulse);
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("BiteCat threw object in direction: %s"), *ThrowDirection.ToString());
 }
 

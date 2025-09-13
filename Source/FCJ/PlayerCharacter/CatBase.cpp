@@ -141,11 +141,6 @@ void ACatBase::ApplyBlueprintSettings()
 		GetCharacterMovement()->AirControl = AirControl;
 	}
 
-	if (SpecialActionBox)
-	{
-		SpecialActionBox->SetBoxExtent(SpecialActionBoxExtent);
-		SpecialActionBox->SetRelativeLocation(FVector(SpecialActionBoxExtent.X, 0.0f, 0.0f));
-	}
 }
 
 AWallJumpObject* ACatBase::FindNearestWallJumpObject() const
@@ -432,10 +427,10 @@ bool ACatBase::CanPerformParkour() const
 {
 	UE_LOG(LogTemp, Warning, TEXT("CanPerformParkour called"));
 
-	// 이미 파쿠르 중이면 불가능
-	if (bIsPerformingParkour)
+	// 이미 파쿠르 중이거나 다른 몽타주 플레이 중이면 불가능
+	if (bIsPerformingParkour || bIsMontageePlaying)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CanPerformParkour: false - already performing parkour"));
+		UE_LOG(LogTemp, Warning, TEXT("CanPerformParkour: false - already performing parkour or playing montage"));
 		return false;
 	}
 
@@ -491,6 +486,7 @@ void ACatBase::PerformParkour()
 
 		// 몽타주 재생 (순수한 루트 모션)
 		float MontageLength = AnimInstance->Montage_Play(ParkourMontage);
+		bIsMontageePlaying = true;
 
 		// 타이머를 사용해서 몽타주 완료 감지
 		FTimerHandle ParkourTimerHandle;
@@ -514,6 +510,7 @@ void ACatBase::OnParkourMontageCompleted()
 	// 파쿠르 상태 리셋
 	bIsPerformingParkour = false;
 	CurrentParkourActor = nullptr;
+	bIsMontageePlaying = false;
 
 	// Walking 모드로 복원
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
