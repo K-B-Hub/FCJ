@@ -75,6 +75,9 @@ private:
 
 	FVector SpawnLocation;
 
+	// Parried projectiles should not home to target anymore
+	bool bIsParried = false;
+
 public:	
 	virtual void Tick(float DeltaTime) override;
 
@@ -86,6 +89,12 @@ public:
 
 	UFUNCTION()
 	void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit);
+
+	UFUNCTION(BlueprintCallable, Category = "Projectile")
+	void SetParried(bool InParried = true) { bIsParried = InParried; }
+
+	UFUNCTION(BlueprintCallable, Category = "Projectile")
+	bool IsParried() const { return bIsParried; }
 
 private:
 	void UpdateMovement(float DeltaTime);

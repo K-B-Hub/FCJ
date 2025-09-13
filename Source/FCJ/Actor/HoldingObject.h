@@ -39,7 +39,7 @@ protected:
 
 	// 잡기 가능한 무게 (BiteCat의 최대 무게와 비교)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Holding Settings", meta = (ToolTip = "이 오브젝트의 무게입니다. BiteCat의 최대 무게보다 작아야 잡을 수 있습니다"))
-	float Weight = 1.0f;
+	float Weight = 50.0f;
 
 	// 잡혔을 때의 오프셋 (BiteCat 기준 상대 위치)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Holding Settings", meta = (ToolTip = "잡혔을 때 BiteCat을 기준으로 한 상대 위치를 설정합니다"))
@@ -49,12 +49,19 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collision Settings", meta = (ToolTip = "오브젝트의 콜리전 박스 크기를 설정합니다"))
 	FVector BoxExtent = FVector(50.0f, 50.0f, 50.0f);
 
-	// 물리 댐핑 설정 (높을수록 더 안정적)
+	// 물리 댐핑 설정 (낮게 설정하여 중력이 정상적으로 작동하도록)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics Settings", meta = (ToolTip = "오브젝트의 선형 댐핑값입니다. 높을수록 움직임이 안정적입니다"))
-	float LinearDamping = 2.0f;
+	float LinearDamping = 1.0f; // 낮은 선형 댐핑으로 중력 정상화
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics Settings", meta = (ToolTip = "오브젝트의 각속도 댐핑값입니다. 높을수록 회전이 안정적입니다"))
-	float AngularDamping = 1.0f;
+	float AngularDamping = 1.0f; // 낮은 각속도 댐핑
+
+	// 물리 안정성 설정
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics Settings", meta = (ToolTip = "물체의 안정성을 높입니다. 높을수록 외부 충격에 덜 반응합니다"))
+	float StabilityDamping = 10.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics Settings", meta = (ToolTip = "중력 스케일 값입니다. 1.0이 기본 중력입니다"))
+	float GravityScale = 1.0f;
 
 
 public:	

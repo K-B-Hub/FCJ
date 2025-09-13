@@ -36,6 +36,15 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Special Action", meta = (AllowPrivateAccess = "true"))
 	class UBoxComponent* SpecialActionBox;
 
+	// 파쿠르 하단 감지 박스 (스태틱메시와 오버랩되어야 함)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour", meta = (AllowPrivateAccess = "true"))
+	class UBoxComponent* ParkourLowerBox;
+
+	// 파쿠르 상단 감지 박스 (스태틱메시와 오버랩되면 안됨)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour", meta = (AllowPrivateAccess = "true"))
+	class UBoxComponent* ParkourUpperBox;
+
+
 	// Blueprint configurable properties
 	// 카메라 암 길이 (캐릭터로부터 카메라까지의 거리)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera Settings", meta = (ToolTip = "캐릭터로부터 카메라까지의 거리를 설정합니다"))
@@ -95,11 +104,23 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Special Action Settings", meta = (ToolTip = "특수 행동(잡기/공격)이 가능한 박스 영역의 크기를 설정합니다"))
 	FVector SpecialActionBoxExtent = FVector(100.0f, 50.0f, 50.0f);
 
+	// Parkour Settings
+	// 파쿠르 애니메이션 몽타주
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parkour Settings", meta = (ToolTip = "파쿠르 시 재생할 루트모션 애니메이션 몽타주"))
+	class UAnimMontage* ParkourMontage;
+
 private:
 	// Wall Jump variables
 	float LastWallJumpTime = 0.0f;
 	int32 CurrentWallJumpsInAir = 0;
 	bool bCanWallJump = true;
+
+	// Parkour variables
+	bool bIsPerformingParkour = false;
+	AActor* CurrentParkourActor = nullptr;
+
+	// Montage playing state
+	bool bIsMontageePlaying = false;
 
 public:	
 	// Called every frame
@@ -118,8 +139,45 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Wall Jump")
 	void PerformWallJump();
 
-	// Override Jump to include wall jump
+	// Override Jump to include wall jump and climbing
 	virtual void Jump() override;
+
+	// Parkour functions
+	UFUNCTION(BlueprintCallable, Category = "Parkour")
+	AActor* DetectParkourTarget() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Parkour")
+	bool CanPerformParkour() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Parkour")
+	void PerformParkour();
+
+	UFUNCTION(BlueprintCallable, Category = "Parkour")
+	bool IsPerformingParkour() const { return bIsPerformingParkour; }
+
+	// Parkour helper functions
+	UFUNCTION(BlueprintCallable, Category = "Parkour")
+	FVector CalculateParkourStartLocation(AActor* Actor) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Parkour")
+	FVector CalculateParkourTargetLocation(AActor* Actor) const;
+
+	// Precise parkour positioning functions
+	UFUNCTION(BlueprintCallable, Category = "Parkour")
+	FVector CalculateParkourStartLocationPrecise(AActor* Actor) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Parkour")
+	FVector CalculateParkourTargetLocationPrecise(AActor* Actor) const;
+
+	// Parkour completion callback
+	void OnParkourMontageCompleted();
+
+	// Montage state management
+	UFUNCTION(BlueprintCallable, Category = "Animation")
+	bool IsPlayingMontage() const { return bIsMontageePlaying; }
+
+	UFUNCTION(BlueprintCallable, Category = "Animation")
+	void SetMontageePlaying(bool InPlaying) { bIsMontageePlaying = InPlaying; }
 
 	// Public getters for components
 	UFUNCTION(BlueprintCallable, Category = "Camera")
@@ -130,6 +188,13 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Special Action")
 	UBoxComponent* GetSpecialActionBox() const { return SpecialActionBox; }
+
+	UFUNCTION(BlueprintCallable, Category = "Parkour")
+	UBoxComponent* GetParkourLowerBox() const { return ParkourLowerBox; }
+
+	UFUNCTION(BlueprintCallable, Category = "Parkour")
+	UBoxComponent* GetParkourUpperBox() const { return ParkourUpperBox; }
+
 
 	// Virtual functions for derived classes to override
 	UFUNCTION(BlueprintImplementableEvent, Category = "Special Actions")
