@@ -6,10 +6,18 @@
 #include "Components/BoxComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
+#include "Net/UnrealNetwork.h"
 
 ABiteCat::ABiteCat()
 {
 	CurrentHeldObject = nullptr;
+}
+
+void ABiteCat::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ABiteCat, CurrentHeldObject);
 }
 
 void ABiteCat::PerformSpecialAction()
@@ -112,24 +120,23 @@ void ABiteCat::HoldObject(AHoldingObject* Object)
 		return;
 	}
 
+	// 서버에 요청 전송
+	ServerHoldObject(Object);
+}
+
+void ABiteCat::ServerHoldObject_Implementation(AHoldingObject* Object)
+{
+	if (!CanHoldObject(Object))
+	{
+		return;
+	}
+
 	CurrentHeldObject = Object;
 	Object->OnHeld(this);
 
 	UE_LOG(LogTemp, Warning, TEXT("BiteCat grabbed object: %s"), *Object->GetName());
 }
 
-void ABiteCat::ReleaseObject()
-{
-	if (!CurrentHeldObject)
-	{
-		return;
-	}
-
-	CurrentHeldObject->OnReleased();
-	CurrentHeldObject = nullptr;
-
-	UE_LOG(LogTemp, Warning, TEXT("BiteCat released object"));
-}
 
 void ABiteCat::ThrowObject()
 {
@@ -138,9 +145,20 @@ void ABiteCat::ThrowObject()
 		return;
 	}
 
+	// 서버에 요청 전송
+	ServerThrowObject();
+}
+
+void ABiteCat::ServerThrowObject_Implementation()
+{
+	if (!CurrentHeldObject)
+	{
+		return;
+	}
+
 	// 캐릭터의 전방 방향 계산
 	FVector ForwardDirection = GetActorForwardVector();
-	
+
 	// 던질 방향에 약간의 위쪽 각도 추가 (포물선 궤적을 위해)
 	FVector ThrowDirection = ForwardDirection + FVector(0.0f, 0.0f, 0.3f);
 	ThrowDirection.Normalize();

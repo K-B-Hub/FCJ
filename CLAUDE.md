@@ -204,6 +204,78 @@ Source/FCJ/
 - Game modes handle cooperative respawning and progress tracking
 - UI system provides feedback for both players' actions and cooperative opportunities
 
+## Networking & Multiplayer Architecture
+
+### Replication Strategy
+The project implements comprehensive multiplayer networking designed for both listen server and dedicated server configurations:
+
+- **Property Replication**: Uses `DOREPLIFETIME` macro for key gameplay state synchronization
+- **RPC Patterns**:
+  - Server RPCs (`UFUNCTION(Server, Reliable)`) for authoritative game logic
+  - Multicast RPCs (`UFUNCTION(NetMulticast, Reliable)`) for visual effects and client synchronization
+  - Client RPCs for player-specific feedback
+- **Component Replication**: Mesh and collision components marked as replicated for proper visual sync
+
+### Key Networked Systems
+
+#### BiteCat Object Holding System
+```cpp
+// Server-authoritative object interaction
+UFUNCTION(Server, Reliable, Category = "Holding")
+void ServerHoldObject(AHoldingObject* Object);
+
+// Replicated state for all clients
+UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated, Category = "Holding")
+AHoldingObject* CurrentHeldObject;
+```
+
+#### Character Movement Networking Patterns
+- **Wall Jump System**: Server-authoritative physics with client visual feedback
+  ```cpp
+  // Client calls PerformWallJump() -> ServerPerformWallJump RPC -> MulticastPerformWallJump for effects
+  UFUNCTION(Server, Reliable, Category = "Wall Jump")
+  void ServerPerformWallJump(FVector JumpDirection);
+
+  UFUNCTION(NetMulticast, Reliable, Category = "Wall Jump")
+  void MulticastPerformWallJump(FVector JumpDirection);
+  ```
+
+- **Parkour System**: Root motion animation synchronized across all clients
+  ```cpp
+  // Server manages state, multicast handles animation synchronization
+  UFUNCTION(Server, Reliable, Category = "Parkour")
+  void ServerPerformParkour(AActor* ParkourTarget);
+
+  UFUNCTION(NetMulticast, Reliable, Category = "Parkour")
+  void MulticastPerformParkour(AActor* ParkourTarget);
+
+  // Critical state replication for parkour
+  UPROPERTY(Replicated) bool bIsPerformingParkour;
+  UPROPERTY(Replicated) AActor* CurrentParkourActor;
+  UPROPERTY(Replicated) bool bIsMontageePlaying;
+  ```
+
+#### Projectile Networking Pattern
+- **Simplified RPC Flow**: InitializeProjectile now directly calls ServerInitializeProjectile without HasAuthority checks
+- **Server Authority**: All projectile logic processed on server, replicated to clients
+- **Multicast Synchronization**: Visual effects and state changes broadcast to all clients
+- **Optimized for Listen Server**: Architecture supports both dedicated and listen server configurations
+
+#### Projectile Volume System
+- Server-controlled activation and projectile spawning with replicated state
+- Player detection and targeting replicated across all clients
+- Configurable spawn patterns with networked synchronization
+
+### Multiplayer Design Patterns
+- **Listen Server Optimized**: Primary design for host-player scenarios with dedicated server support
+- **Authority-First**: All gameplay logic validated on server before client updates
+- **Visual Separation**: Effects and animations handled via multicast, logic via server RPCs
+- **State Synchronization**: Critical gameplay state replicated automatically via property replication
+- **Root Motion Replication**: Character animations with root motion properly synchronized across clients
+  - Server controls state transitions (Flying/Walking movement modes)
+  - Multicast ensures animation plays on all clients simultaneously
+  - Timer-based completion callbacks only execute on server authority
+
 ## Technical Implementation Notes
 
 ### Platformer-Optimized Camera System
@@ -231,12 +303,13 @@ Source/FCJ/
   - Integration with AWallJumpObject actors for level design flexibility
   - Configurable wall jump forces and detection parameters
   - Cooldown system prevents infinite wall jumping exploits
+  - **Networking**: Server-authoritative physics with RPC pattern for multiplayer support
 
 - **Parkour System**: Box collision-based root motion climbing for waist-level obstacles
   - **Dual Box Detection**: Uses two UBoxComponent instances for precise parkour detection
     - ParkourLowerBox: Must overlap with StaticMesh objects (something to climb)
     - ParkourUpperBox: Must NOT overlap with StaticMesh objects (clear space above)
-  - **Collision Configuration**: 
+  - **Collision Configuration**:
     - ECollisionChannel::ECC_WorldStatic overlap response only
     - ECC_Pawn set to ECR_Ignore to prevent character self-overlap
     - QueryOnly collision enabled, no physics interaction
@@ -244,6 +317,7 @@ Source/FCJ/
   - **Movement Mode Management**: Switches to Flying mode during parkour for Z-axis root motion
   - **Root Motion Priority**: Pure animation-driven movement without Motion Warping dependency
   - **Jump Priority**: Parkour → Wall Jump → Normal Jump execution order
+  - **Networking**: Server manages state transitions, multicast synchronizes animations with proper root motion replication
 
 - **Object Interaction Framework**: Complete holding/carrying system for puzzle mechanics
   - Weight-based interaction limits and physics integration

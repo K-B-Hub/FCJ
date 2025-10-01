@@ -6,10 +6,14 @@
 #include "Engine/World.h"
 #include "TimerManager.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Net/UnrealNetwork.h"
 
 AProjectileVolume::AProjectileVolume()
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	// 레플리케이션 설정
+	bReplicates = true;
 
 	VolumeComponent = CreateDefaultSubobject<UBoxComponent>(TEXT("VolumeComponent"));
 	VolumeComponent->SetBoxExtent(FVector(500.0f, 500.0f, 300.0f));
@@ -24,6 +28,15 @@ AProjectileVolume::AProjectileVolume()
 	VolumeComponent->OnComponentEndOverlap.AddDynamic(this, &AProjectileVolume::OnVolumeEndOverlap);
 
 	bIsActive = false;
+}
+
+void AProjectileVolume::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AProjectileVolume, OverlappingCats);
+	DOREPLIFETIME(AProjectileVolume, ActiveProjectiles);
+	DOREPLIFETIME(AProjectileVolume, bIsActive);
 }
 
 void AProjectileVolume::BeginPlay()
@@ -73,6 +86,18 @@ void AProjectileVolume::OnVolumeEndOverlap(UPrimitiveComponent* OverlappedCompon
 
 void AProjectileVolume::SetActive(bool bNewActive)
 {
+	if (HasAuthority())
+	{
+		ServerSetActive(bNewActive);
+	}
+	else
+	{
+		ServerSetActive(bNewActive);
+	}
+}
+
+void AProjectileVolume::ServerSetActive_Implementation(bool bNewActive)
+{
 	if (bIsActive == bNewActive)
 		return;
 
@@ -90,10 +115,10 @@ void AProjectileVolume::SetActive(bool bNewActive)
 
 void AProjectileVolume::StartLaunching()
 {
-	if (!GetWorld())
+	if (!GetWorld() || !HasAuthority())
 		return;
 
-	GetWorld()->GetTimerManager().SetTimer(LaunchTimerHandle, this, &AProjectileVolume::LaunchProjectile, LaunchInterval, true);
+	GetWorld()->GetTimerManager().SetTimer(LaunchTimerHandle, this, &AProjectileVolume::ServerLaunchProjectile, LaunchInterval, true);
 }
 
 void AProjectileVolume::StopLaunching()
@@ -106,7 +131,12 @@ void AProjectileVolume::StopLaunching()
 
 void AProjectileVolume::LaunchProjectile()
 {
-	if (!GetWorld() || !ProjectileClass)
+	// 이 함수는 이제 사용하지 않음 - ServerLaunchProjectile로 대체
+}
+
+void AProjectileVolume::ServerLaunchProjectile_Implementation()
+{
+	if (!GetWorld() || !ProjectileClass || !HasAuthority())
 		return;
 
 	if (ActiveProjectiles.Num() >= MaxSimultaneousProjectiles)
@@ -153,7 +183,7 @@ void AProjectileVolume::LaunchProjectile()
 		FVector VolumeCenter = GetActorLocation();
 		LaunchDirection = GetValidLaunchDirection(LaunchLocation, VolumeCenter);
 	}
-	
+
 	ProjectileType = GetRandomProjectileType();
 
 	FActorSpawnParameters SpawnParams;
@@ -166,7 +196,14 @@ void AProjectileVolume::LaunchProjectile()
 		NewProjectile->SetSpawnVolume(this);
 		NewProjectile->InitializeProjectile(ProjectileType, TargetCat, LaunchDirection);
 		ActiveProjectiles.Add(NewProjectile);
+		MulticastOnProjectileLaunched(NewProjectile);
 	}
+}
+
+void AProjectileVolume::MulticastOnProjectileLaunched_Implementation(AProjectile* NewProjectile)
+{
+	// 클라이언트에서 발사체 생성 알림 및 시각/사운드 효과 처리
+	// 실제 발사체는 이미 서버에서 생성되어 레플리케이션됨
 }
 
 FVector AProjectileVolume::GetRandomLaunchPoint() const

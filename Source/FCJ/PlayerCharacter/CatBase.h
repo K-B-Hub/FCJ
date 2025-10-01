@@ -8,6 +8,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/BoxComponent.h"
+#include "Net/UnrealNetwork.h"
 #include "CatBase.generated.h"
 
 class AWallJumpObject;
@@ -115,19 +116,26 @@ private:
 	int32 CurrentWallJumpsInAir = 0;
 	bool bCanWallJump = true;
 
-	// Parkour variables
+	// Parkour variables (replicated for network sync)
+	UPROPERTY(Replicated)
 	bool bIsPerformingParkour = false;
+
+	UPROPERTY(Replicated)
 	AActor* CurrentParkourActor = nullptr;
 
-	// Montage playing state
+	// Montage playing state (replicated for network sync)
+	UPROPERTY(Replicated)
 	bool bIsMontageePlaying = false;
 
-public:	
+public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	// Replication
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// Wall Jump functions
 	UFUNCTION(BlueprintCallable, Category = "Wall Jump")
@@ -138,6 +146,14 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Wall Jump")
 	void PerformWallJump();
+
+	// Server RPC for wall jump
+	UFUNCTION(Server, Reliable, Category = "Wall Jump")
+	void ServerPerformWallJump(FVector JumpDirection);
+
+	// Multicast RPC for wall jump effects
+	UFUNCTION(NetMulticast, Reliable, Category = "Wall Jump")
+	void MulticastPerformWallJump(FVector JumpDirection);
 
 	// Override Jump to include wall jump and climbing
 	virtual void Jump() override;
@@ -154,6 +170,14 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Parkour")
 	bool IsPerformingParkour() const { return bIsPerformingParkour; }
+
+	// Server RPC for parkour
+	UFUNCTION(Server, Reliable, Category = "Parkour")
+	void ServerPerformParkour(AActor* ParkourTarget);
+
+	// Multicast RPC for parkour effects
+	UFUNCTION(NetMulticast, Reliable, Category = "Parkour")
+	void MulticastPerformParkour(AActor* ParkourTarget);
 
 	// Parkour helper functions
 	UFUNCTION(BlueprintCallable, Category = "Parkour")

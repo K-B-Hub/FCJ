@@ -9,10 +9,14 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/Engine.h"
 #include "Kismet/GameplayStatics.h"
+#include "Net/UnrealNetwork.h"
 
 AProjectile::AProjectile()
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	// 레플리케이션 설정
+	bReplicates = true;
 
 	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComponent"));
 	CollisionComponent->SetSphereRadius(5.0f);
@@ -42,9 +46,29 @@ AProjectile::AProjectile()
 	CollisionComponent->OnComponentHit.AddDynamic(this, &AProjectile::OnHit);
 }
 
+void AProjectile::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AProjectile, ProjectileType);
+	DOREPLIFETIME(AProjectile, TargetCharacter);
+	DOREPLIFETIME(AProjectile, SpawnVolume);
+	DOREPLIFETIME(AProjectile, bIsParried);
+}
+
 void AProjectile::BeginPlay()
 {
 	Super::BeginPlay();
+
+	SetReplicateMovement(true);
+	if (MeshComponent)
+	{
+		MeshComponent->SetIsReplicated(true);
+	}
+	if (CollisionComponent)
+	{
+		CollisionComponent->SetIsReplicated(true);
+	}
 	
 	SetLifeSpan(LifeTime);
 	SpawnLocation = GetActorLocation();
@@ -82,6 +106,11 @@ void AProjectile::Tick(float DeltaTime)
 
 void AProjectile::InitializeProjectile(EProjectileType InProjectileType, ACatBase* InTarget, FVector InDirection)
 {
+	ServerInitializeProjectile(InProjectileType, InTarget, InDirection);
+}
+
+void AProjectile::ServerInitializeProjectile_Implementation(EProjectileType InProjectileType, ACatBase* InTarget, FVector InDirection)
+{
 	ProjectileType = InProjectileType;
 	TargetCharacter = InTarget;
 	InitialDirection = InDirection.IsNormalized() ? InDirection : InDirection.GetSafeNormal();
@@ -115,37 +144,91 @@ void AProjectile::InitializeProjectile(EProjectileType InProjectileType, ACatBas
 		ProjectileMovement->Velocity = InitialDirection * ProjectileSpeed;
 		break;
 	}
+
+	MulticastInitializeProjectile(InProjectileType, InTarget, InDirection);
+}
+
+void AProjectile::MulticastInitializeProjectile_Implementation(EProjectileType InProjectileType, ACatBase* InTarget, FVector InDirection)
+{
+	if (!HasAuthority())
+	{
+		ProjectileType = InProjectileType;
+		TargetCharacter = InTarget;
+		InitialDirection = InDirection.IsNormalized() ? InDirection : InDirection.GetSafeNormal();
+
+		ProjectileMovement->InitialSpeed = ProjectileSpeed;
+		ProjectileMovement->MaxSpeed = ProjectileSpeed;
+
+		switch (ProjectileType)
+		{
+		case EProjectileType::Straight:
+			ProjectileMovement->bIsHomingProjectile = false;
+			ProjectileMovement->Velocity = InitialDirection * ProjectileSpeed;
+			break;
+
+		case EProjectileType::Homing:
+			if (TargetCharacter)
+			{
+				ProjectileMovement->bIsHomingProjectile = true;
+				ProjectileMovement->HomingAccelerationMagnitude = HomingAcceleration;
+				ProjectileMovement->HomingTargetComponent = TargetCharacter->GetRootComponent();
+			}
+			else
+			{
+				ProjectileMovement->bIsHomingProjectile = false;
+				ProjectileMovement->Velocity = InitialDirection * ProjectileSpeed;
+			}
+			break;
+
+		case EProjectileType::SlightGuided:
+			ProjectileMovement->bIsHomingProjectile = false;
+			ProjectileMovement->Velocity = InitialDirection * ProjectileSpeed;
+			break;
+		}
+	}
 }
 
 void AProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit)
 {
-	if (OtherActor && OtherActor != this && OtherActor != GetOwner())
+	if (HasAuthority() && OtherActor && OtherActor != this && OtherActor != GetOwner())
 	{
-		ACatBase* HitCat = Cast<ACatBase>(OtherActor);
-		if (HitCat)
-		{
-			// Apply damage
-			UGameplayStatics::ApplyPointDamage(HitCat, Damage, GetActorLocation(), Hit, nullptr, this, UDamageType::StaticClass());
-			
-			// Apply knockback force
-			FVector KnockbackDirection = (HitCat->GetActorLocation() - GetActorLocation()).GetSafeNormal();
-			
-			// Apply the knockback force to the character's movement component
-			if (UCharacterMovementComponent* MovementComponent = HitCat->GetCharacterMovement())
-			{
-				// Calculate horizontal knockback
-				FVector HorizontalKnockback = FVector(KnockbackDirection.X, KnockbackDirection.Y, 0.0f).GetSafeNormal() * KnockbackForce;
-				
-				// Add vertical knockback component
-				FVector VerticalKnockback = FVector(0.0f, 0.0f, VerticalKnockbackForce);
-				
-				FVector TotalKnockback = HorizontalKnockback + VerticalKnockback;
-				MovementComponent->AddImpulse(TotalKnockback, true);
-			}
-		}
-
-		Destroy();
+		ServerOnHit(OtherActor, Hit);
 	}
+}
+
+void AProjectile::ServerOnHit_Implementation(AActor* OtherActor, const FHitResult& Hit)
+{
+	ACatBase* HitCat = Cast<ACatBase>(OtherActor);
+	if (HitCat)
+	{
+		// Apply damage
+		UGameplayStatics::ApplyPointDamage(HitCat, Damage, GetActorLocation(), Hit, nullptr, this, UDamageType::StaticClass());
+
+		// Apply knockback force
+		FVector KnockbackDirection = (HitCat->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+
+		// Apply the knockback force to the character's movement component
+		if (UCharacterMovementComponent* MovementComponent = HitCat->GetCharacterMovement())
+		{
+			// Calculate horizontal knockback
+			FVector HorizontalKnockback = FVector(KnockbackDirection.X, KnockbackDirection.Y, 0.0f).GetSafeNormal() * KnockbackForce;
+
+			// Add vertical knockback component
+			FVector VerticalKnockback = FVector(0.0f, 0.0f, VerticalKnockbackForce);
+
+			FVector TotalKnockback = HorizontalKnockback + VerticalKnockback;
+			MovementComponent->AddImpulse(TotalKnockback, true);
+		}
+	}
+
+	MulticastOnHit(OtherActor, Hit);
+	Destroy();
+}
+
+void AProjectile::MulticastOnHit_Implementation(AActor* OtherActor, const FHitResult& Hit)
+{
+	// 클라이언트에서 파티클 이펙트나 사운드 재생 등 시각적 효과 처리
+	// 실제 데미지나 넉백은 서버에서만 처리됨
 }
 
 void AProjectile::UpdateMovement(float DeltaTime)

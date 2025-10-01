@@ -8,7 +8,8 @@ public class FCJ : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "AIModule", "Slate", "SlateCore" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput",
+			"AIModule", "Slate", "SlateCore", "OnlineSubsystem", "OnlineSubsystemSteam", "ApplicationCore" });
 		
 		PublicIncludePaths.AddRange(
 			new string[] {

@@ -7,6 +7,7 @@
 #include "Components/BoxComponent.h"
 #include "Engine/TimerHandle.h"
 #include "Projectile.h"
+#include "Net/UnrealNetwork.h"
 #include "ProjectileVolume.generated.h"
 
 class ACatBase;
@@ -29,6 +30,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Components)
 	UBoxComponent* VolumeComponent;
@@ -61,13 +63,14 @@ protected:
 	bool bActivateOnOverlap = true;
 
 private:
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	TArray<ACatBase*> OverlappingCats;
 
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	TArray<AProjectile*> ActiveProjectiles;
 
 	FTimerHandle LaunchTimerHandle;
+	UPROPERTY(Replicated)
 	bool bIsActive;
 
 public:	
@@ -81,6 +84,16 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Projectile Volume")
 	void SetActive(bool bNewActive);
+
+	// 서버 RPC 함수들
+	UFUNCTION(Server, Reliable, Category = "Projectile Volume")
+	void ServerSetActive(bool bNewActive);
+
+	UFUNCTION(Server, Reliable, Category = "Projectile Volume")
+	void ServerLaunchProjectile();
+
+	UFUNCTION(NetMulticast, Reliable, Category = "Projectile Volume")
+	void MulticastOnProjectileLaunched(AProjectile* NewProjectile);
 
 	UFUNCTION(BlueprintCallable, Category = "Projectile Volume")
 	bool IsActive() const { return bIsActive; }

@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/BoxComponent.h"
+#include "Net/UnrealNetwork.h"
 #include "HoldingObject.generated.h"
 
 class ABiteCat;
@@ -20,6 +21,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// 메시 컴포넌트 (블루프린트에서 다양한 오브젝트 설정 가능)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
@@ -30,11 +32,11 @@ protected:
 	UBoxComponent* CollisionComponent;
 
 	// 잡혔는지 여부
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Holding")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated, Category = "Holding")
 	bool bIsBeingHeld;
 
 	// 현재 잡고 있는 캐릭터
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Holding")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated, Category = "Holding")
 	ABiteCat* HoldingCat;
 
 	// 잡기 가능한 무게 (BiteCat의 최대 무게와 비교)
@@ -43,7 +45,7 @@ protected:
 
 	// 잡혔을 때의 오프셋 (BiteCat 기준 상대 위치)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Holding Settings", meta = (ToolTip = "잡혔을 때 BiteCat을 기준으로 한 상대 위치를 설정합니다"))
-	FVector HoldOffset = FVector(100.0f, 0.0f, 0.0f);
+	FVector HoldOffset = FVector(150.0f, 0.0f, 0.0f);
 
 	// 콜리전 박스 크기 설정
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collision Settings", meta = (ToolTip = "오브젝트의 콜리전 박스 크기를 설정합니다"))
@@ -77,6 +79,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Holding")
 	void OnReleased();
 
+
 	UFUNCTION(BlueprintCallable, Category = "Holding")
 	bool IsBeingHeld() const { return bIsBeingHeld; }
 
@@ -85,4 +88,5 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Holding")
 	FVector GetHoldOffset() const { return HoldOffset; }
+
 };

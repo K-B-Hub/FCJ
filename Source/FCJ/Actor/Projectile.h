@@ -7,6 +7,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Net/UnrealNetwork.h"
 #include "Projectile.generated.h"
 
 class ACatBase;
@@ -29,6 +30,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Components)
 	USphereComponent* CollisionComponent;
@@ -39,7 +41,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Components)
 	UProjectileMovementComponent* ProjectileMovement;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile Settings", meta = (ToolTip = "발사체의 유형 (직선, 완전 호밍, 약간 유도)"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Projectile Settings", meta = (ToolTip = "발사체의 유형 (직선, 완전 호밍, 약간 유도)"))
 	EProjectileType ProjectileType = EProjectileType::Straight;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile Settings", meta = (ClampMin = "0.0", ToolTip = "발사체의 이동 속도"))
@@ -67,15 +69,16 @@ protected:
 	float VerticalKnockbackForce = 300.0f;
 
 private:
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	ACatBase* TargetCharacter;
 
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	class AProjectileVolume* SpawnVolume;
 
 	FVector SpawnLocation;
 
 	// Parried projectiles should not home to target anymore
+	UPROPERTY(Replicated)
 	bool bIsParried = false;
 
 public:	
@@ -84,11 +87,24 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Projectile")
 	void InitializeProjectile(EProjectileType InProjectileType, ACatBase* InTarget = nullptr, FVector InDirection = FVector::ZeroVector);
 
+	// 서버 RPC 함수들
+	UFUNCTION(Server, Reliable, Category = "Projectile")
+	void ServerInitializeProjectile(EProjectileType InProjectileType, ACatBase* InTarget, FVector InDirection);
+
+	UFUNCTION(NetMulticast, Reliable, Category = "Projectile")
+	void MulticastInitializeProjectile(EProjectileType InProjectileType, ACatBase* InTarget, FVector InDirection);
+
 	UFUNCTION(BlueprintCallable, Category = "Projectile")
 	void SetSpawnVolume(class AProjectileVolume* Volume);
 
 	UFUNCTION()
 	void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit);
+
+	UFUNCTION(Server, Reliable, Category = "Projectile")
+	void ServerOnHit(AActor* OtherActor, const FHitResult& Hit);
+
+	UFUNCTION(NetMulticast, Reliable, Category = "Projectile")
+	void MulticastOnHit(AActor* OtherActor, const FHitResult& Hit);
 
 	UFUNCTION(BlueprintCallable, Category = "Projectile")
 	void SetParried(bool InParried = true) { bIsParried = InParried; }

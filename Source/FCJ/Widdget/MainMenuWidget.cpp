@@ -45,7 +45,7 @@ void UMainMenuWidget::OnLocalPlayClicked()
 
 void UMainMenuWidget::OnMultiPlayClicked()
 {
-	UGameplayStatics::OpenLevel(GetWorld(), TEXT("/Game/Levels/Test"), true);
+	OnMultiPlayButtonClicked.Broadcast();
 }
 
 void UMainMenuWidget::OnSettingClicked()

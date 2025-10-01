@@ -17,15 +17,18 @@ class FCJ_API AMainMenuGameMode : public AGameModeBase
 public:
 	AMainMenuGameMode();
 
+	// 플레이어 역할 교체
+	UFUNCTION(BlueprintCallable)
+	void SwapPlayerRoles();
+
+	// GameState 업데이트
+	void UpdateGameStateRoles();
+
 protected:
 	virtual void BeginPlay() override;
+	virtual void PostLogin(APlayerController* NewPlayer) override;
 
 private:
 	// Apply saved display settings
 	void ApplySavedDisplaySettings();
-	UPROPERTY(EditDefaultsOnly, Category = "Widget")
-	TSubclassOf<class UMainMenuWidget> MainMenuWidgetClass;
-
-	UPROPERTY()
-	class UMainMenuWidget* MainMenuWidget;
 };

@@ -15,12 +15,16 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/CollisionProfile.h"
 #include "Engine/OverlapResult.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 ACatBase::ACatBase()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
+	// Enable replication
+	bReplicates = true;
 
 	// Create SpringArm component
 	SpringArmComponent = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
@@ -90,15 +94,29 @@ ACatBase::ACatBase()
 	bUseControllerRotationRoll = false;
 	
 	// 루트 모션 설정
-	GetMesh()->SetNotifyRigidBodyCollision(true);
 	GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = true;
+}
+
+void ACatBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ACatBase, bIsPerformingParkour);
+	DOREPLIFETIME(ACatBase, CurrentParkourActor);
+	DOREPLIFETIME(ACatBase, bIsMontageePlaying);
 }
 
 // Called when the game starts or when spawned
 void ACatBase::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	// 루트 모션 관련 설정 (BeginPlay에서 안전하게 호출)
+	if (!HasAnyFlags(RF_ClassDefaultObject))
+	{
+		GetMesh()->SetNotifyRigidBodyCollision(true);
+	}
+
 	// Apply Blueprint settings when the game starts
 	ApplyBlueprintSettings();
 }
@@ -212,15 +230,39 @@ void ACatBase::PerformWallJump()
 	// Get jump direction from wall
 	FVector JumpDirection = NearestWall->GetWallJumpDirection(GetActorLocation());
 
-	// Apply wall jump velocity
+	// Call server RPC to perform wall jump
+	ServerPerformWallJump(JumpDirection);
+}
+
+void ACatBase::ServerPerformWallJump_Implementation(FVector JumpDirection)
+{
+	// Server authoritative wall jump logic
+	if (!CanPerformWallJump())
+	{
+		return;
+	}
+
+	// Apply wall jump velocity on server
 	GetCharacterMovement()->Velocity = JumpDirection;
 
 	// Update wall jump tracking
 	LastWallJumpTime = GetWorld()->GetTimeSeconds();
 	CurrentWallJumpsInAir++;
 
-	// Play jump animation/effects here if needed
-	UE_LOG(LogTemp, Warning, TEXT("Wall Jump Performed! Direction: %s"), *JumpDirection.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("Server: Wall Jump Performed! Direction: %s"), *JumpDirection.ToString());
+
+	// Broadcast to all clients for visual effects
+	MulticastPerformWallJump(JumpDirection);
+}
+
+void ACatBase::MulticastPerformWallJump_Implementation(FVector JumpDirection)
+{
+	// Client-side visual effects and audio
+	if (!HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Client: Wall Jump visual effects! Direction: %s"), *JumpDirection.ToString());
+		// Here you can add particle effects, sounds, etc.
+	}
 }
 
 void ACatBase::Jump()
@@ -461,42 +503,70 @@ void ACatBase::PerformParkour()
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Starting parkour on target: %s"), *ParkourTarget->GetName());
+	// Call server RPC to perform parkour
+	ServerPerformParkour(ParkourTarget);
+}
 
-	// 파쿠르 상태 설정
+void ACatBase::ServerPerformParkour_Implementation(AActor* ParkourTarget)
+{
+	// Server authoritative parkour logic
+	if (!ParkourTarget || !CanPerformParkour())
+	{
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Server: Starting parkour on target: %s"), *ParkourTarget->GetName());
+
+	// Set parkour state (replicated)
 	bIsPerformingParkour = true;
 	CurrentParkourActor = ParkourTarget;
 
-	// 오브젝트 방향으로 캐릭터 회전
+	// Rotate character towards target
 	FVector DirectionToTarget = (ParkourTarget->GetActorLocation() - GetActorLocation()).GetSafeNormal();
 	if (!DirectionToTarget.IsNearlyZero())
 	{
 		FRotator TargetRotation = DirectionToTarget.Rotation();
 		SetActorRotation(FRotator(0.0f, TargetRotation.Yaw, 0.0f));
 	}
-	
-	// Z축 루트 모션을 위해 Flying 모드로 변경
+
+	// Change to Flying mode for Z-axis root motion
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
-	UE_LOG(LogTemp, Warning, TEXT("Movement mode changed to Flying for Z-axis root motion"));
-	
-	// 파쿠르 애니메이션 몽타주 재생
+	UE_LOG(LogTemp, Warning, TEXT("Server: Movement mode changed to Flying for Z-axis root motion"));
+
+	// Broadcast to all clients to start parkour animation
+	MulticastPerformParkour(ParkourTarget);
+}
+
+void ACatBase::MulticastPerformParkour_Implementation(AActor* ParkourTarget)
+{
+	if (!ParkourTarget || !ParkourMontage)
+	{
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Multicast: Starting parkour animation on target: %s"), *ParkourTarget->GetName());
+
+	// Play parkour animation on all clients
 	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Starting parkour animation at: %s"), *GetActorLocation().ToString());
 
-		// 몽타주 재생 (순수한 루트 모션)
+		// Play montage with root motion
 		float MontageLength = AnimInstance->Montage_Play(ParkourMontage);
 		bIsMontageePlaying = true;
 
-		// 타이머를 사용해서 몽타주 완료 감지
-		FTimerHandle ParkourTimerHandle;
-		GetWorld()->GetTimerManager().SetTimer(
-			ParkourTimerHandle,
-			this,
-			&ACatBase::OnParkourMontageCompleted,
-			MontageLength,
-			false
-		);
+		// Set timer for montage completion (only on server)
+		if (HasAuthority())
+		{
+			FTimerHandle ParkourTimerHandle;
+			GetWorld()->GetTimerManager().SetTimer(
+				ParkourTimerHandle,
+				this,
+				&ACatBase::OnParkourMontageCompleted,
+				MontageLength,
+				false
+			);
+		}
 
 		UE_LOG(LogTemp, Warning, TEXT("Parkour animation started! Duration: %f seconds"), MontageLength);
 	}
@@ -504,17 +574,23 @@ void ACatBase::PerformParkour()
 
 void ACatBase::OnParkourMontageCompleted()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Parkour Animation Completed!"));
+	// Only called on server
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Server: Parkour Animation Completed!"));
 	UE_LOG(LogTemp, Warning, TEXT("Final location after root motion: %s"), *GetActorLocation().ToString());
 
-	// 파쿠르 상태 리셋
+	// Reset parkour state (replicated)
 	bIsPerformingParkour = false;
 	CurrentParkourActor = nullptr;
 	bIsMontageePlaying = false;
 
-	// Walking 모드로 복원
+	// Restore Walking mode
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
-	UE_LOG(LogTemp, Warning, TEXT("Parkour completed - movement mode restored to Walking"));
+	UE_LOG(LogTemp, Warning, TEXT("Server: Parkour completed - movement mode restored to Walking"));
 }
 
 FVector ACatBase::CalculateParkourStartLocation(AActor* Actor) const

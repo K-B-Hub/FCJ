@@ -3,7 +3,9 @@
     "allow": [
       "Bash(dir C:Program FilesEpic Games)",
       "Read(//c/Program Files/Epic Games//**)",
-      "Bash(msbuild:*)"
+      "Bash(msbuild:*)",
+      "Bash(xargs ls:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "PlayerCharacter/CatBase.h"
+#include "Net/UnrealNetwork.h"
 #include "BiteCat.generated.h"
 
 class AHoldingObject;
@@ -17,8 +18,10 @@ public:
 	ABiteCat();
 
 protected:
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	// 현재 잡고 있는 오브젝트
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Holding")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated, Category = "Holding")
 	AHoldingObject* CurrentHeldObject;
 	
 	// 물체를 던질 때의 힘
@@ -39,8 +42,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Holding")
 	void HoldObject(AHoldingObject* Object);
 
-	UFUNCTION(BlueprintCallable, Category = "Holding")
-	void ReleaseObject();
 
 	UFUNCTION(BlueprintCallable, Category = "Holding")
 	void ThrowObject();
@@ -50,4 +51,11 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Holding")
 	AHoldingObject* GetHeldObject() const { return CurrentHeldObject; }
+
+	// 서버 RPC 함수들
+	UFUNCTION(Server, Reliable, Category = "Holding")
+	void ServerHoldObject(AHoldingObject* Object);
+
+	UFUNCTION(Server, Reliable, Category = "Holding")
+	void ServerThrowObject();
 };

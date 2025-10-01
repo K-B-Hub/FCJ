@@ -9,6 +9,8 @@
 class UButton;
 class USettingsWidget;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMultiPlayClicked);
+
 /**
  * 
  */
@@ -32,6 +34,10 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UButton* ExitButton;
 
+public:
+	UPROPERTY(BlueprintAssignable)
+	FOnMultiPlayClicked OnMultiPlayButtonClicked;
+
 private:
 	UFUNCTION()
 	void OnLocalPlayClicked();
@@ -50,5 +56,5 @@ private:
 
 	UPROPERTY(meta = (BindWidget))
 	USettingsWidget* SettingsWidget;
-	
+
 };

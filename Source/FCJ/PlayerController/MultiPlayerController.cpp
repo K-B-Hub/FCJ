@@ -14,6 +14,7 @@
 #include "Widdget/SettingsWidget.h"
 #include "Widdget/ESCWidget.h"
 #include "InputModifiers.h"
+#include "Subsystem/MultiSessionSubsystem.h"
 #include "Kismet/KismetSystemLibrary.h"
 
 // Define static member
@@ -497,7 +498,11 @@ void AMultiPlayerController::ReturnToMainMenu()
 	
 	// Don't need to resume game in multiplayer - game was never paused
 	// UGameplayStatics::SetGamePaused(GetWorld(), false);
-	
+	UMultiSessionSubsystem* Server = GetGameInstance()->GetSubsystem<UMultiSessionSubsystem>();
+	if (Server)
+	{
+		Server->DestroyServer();
+	}
 	// Load main menu level
 	UGameplayStatics::OpenLevel(this, FName("MainMenu"));
 }
@@ -505,6 +510,11 @@ void AMultiPlayerController::ReturnToMainMenu()
 void AMultiPlayerController::ExitGame()
 {
 	UE_LOG(LogTemp, Warning, TEXT("ExitGame called"));
+	UMultiSessionSubsystem* Server = GetGameInstance()->GetSubsystem<UMultiSessionSubsystem>();
+	if (Server)
+	{
+		Server->DestroyServer();
+	}
 	// Exit the game
 	UKismetSystemLibrary::QuitGame(GetWorld(), this, EQuitPreference::Quit, false);
 }
