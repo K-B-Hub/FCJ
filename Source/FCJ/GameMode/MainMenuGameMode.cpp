@@ -61,7 +61,7 @@ void AMainMenuGameMode::PostLogin(APlayerController* NewPlayer)
 		if (MainMenuController)
 		{
 			UMultiSessionSubsystem* Server = GetGameInstance()->GetSubsystem<UMultiSessionSubsystem>();
-			if (NewPlayer->HasAuthority() && NewPlayer->IsLocalController())
+			if (NewPlayer->HasAuthority() && NewPlayer->IsLocalController() && Server->bInServer)
 			{
 				// 서버(호스트)는 직접 로비 위젯 표시
 				FString SessionId = Server ? Server->GetCurrentSessionId() : FString();

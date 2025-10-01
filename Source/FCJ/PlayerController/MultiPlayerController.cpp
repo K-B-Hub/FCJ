@@ -38,6 +38,12 @@ void AMultiPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Only proceed with local player setup
+	if (!IsLocalPlayerController())
+	{
+		return;
+	}
+
 	// Load input settings from config
 	LoadInputSettings();
 
@@ -54,7 +60,7 @@ void AMultiPlayerController::BeginPlay()
 	SetShowMouseCursor(false);
 	SetInputMode(FInputModeGameOnly());
 	UE_LOG(LogTemp, Warning, TEXT("MultiPlayerController BeginPlay: Set input mode to GameOnly"));
-	
+
 	// Load and apply display settings to ensure they persist across level changes
 	if (UGameUserSettings* GameUserSettings = UGameUserSettings::GetGameUserSettings())
 	{
@@ -62,7 +68,7 @@ void AMultiPlayerController::BeginPlay()
 		GameUserSettings->ApplySettings(false);
 		UE_LOG(LogTemp, Warning, TEXT("Loaded and applied display settings in game level"));
 	}
-	
+
 	// Create ESC Widget once at BeginPlay
 	if (ESCWidgetClass)
 	{
@@ -73,11 +79,11 @@ void AMultiPlayerController::BeginPlay()
 			ESCWidget->OnResumeButtonClicked.AddDynamic(this, &AMultiPlayerController::ResumeGame);
 			ESCWidget->OnMainMenuButtonClicked.AddDynamic(this, &AMultiPlayerController::ReturnToMainMenu);
 			ESCWidget->OnExitGameButtonClicked.AddDynamic(this, &AMultiPlayerController::ExitGame);
-			
+
 			// Add to viewport but keep hidden initially
 			ESCWidget->AddToViewport();
 			ESCWidget->SetVisibility(ESlateVisibility::Hidden);
-			
+
 			UE_LOG(LogTemp, Warning, TEXT("ESC Widget created and added to viewport (hidden)"));
 		}
 		else

@@ -2,8 +2,7 @@
 
 
 #include "MainMenuController.h"
-
-#include "../../../../../UE_5.6/Engine/Source/Runtime/UMG/Public/Components/Image.h"
+#include "Subsystem/MultiSessionSubsystem.h"
 #include "FCJ/Widdget/MainMenuWidget.h"
 #include "FCJ/Widdget/MultiSessionWidget.h"
 #include "FCJ/Widdget/LobbyWidget.h"
@@ -18,12 +17,37 @@ void AMainMenuController::BeginPlay()
 
 	if (IsLocalPlayerController())
 	{
-		UWorld* World = GetWorld();
-		bool bIsInMultiplayerSession = World && World->GetNetMode() != NM_Standalone;
+		UMultiSessionSubsystem* Server = GetGameInstance()->GetSubsystem<UMultiSessionSubsystem>();
+		bool bInServer = Server && Server->bInServer;
 
-		// 멀티플레이 세션이 아닐 때만 메인 메뉴와 세션 위젯 표시
-		if (!bIsInMultiplayerSession)
+		// 세션에 있는 경우 LobbyWidget 표시
+		if (bInServer)
 		{
+			if (LobbyWidgetClass)
+			{
+				LobbyWidget = CreateWidget<ULobbyWidget>(this, LobbyWidgetClass);
+				if (LobbyWidget)
+				{
+					LobbyWidget->AddToViewport();
+					LobbyWidget->SetVisibility(ESlateVisibility::Visible);
+
+					// 세션 ID 설정 (있는 경우)
+					FString SessionId = Server->GetCurrentSessionId();
+					if (!SessionId.IsEmpty())
+					{
+						LobbyWidget->SetSessionId(SessionId);
+					}
+
+					// 호스트/클라이언트 구분
+					LobbyWidget->SetIsHost(HasAuthority());
+
+					GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("LobbyWidget created at BeginPlay (in server)"));
+				}
+			}
+		}
+		else
+		{
+			// 세션에 없는 경우 MainMenu 표시
 			if (MainMenuWidgetClass)
 			{
 				MainMenuWidget = CreateWidget<UMainMenuWidget>(this, MainMenuWidgetClass);
@@ -45,9 +69,6 @@ void AMainMenuController::BeginPlay()
 				}
 			}
 		}
-
-		// LobbyWidget은 필요할 때 ShowLobbyWidget에서 생성
-		// BeginPlay에서는 생성하지 않음
 	}
 }
 
@@ -126,7 +147,6 @@ void AMainMenuController::ClientShowLobbyWidget_Implementation()
 		{
 			MultiSessionWidget->SetVisibility(ESlateVisibility::Hidden);
 		}
-
 		// 로비 위젯 표시
 		LobbyWidget->SetVisibility(ESlateVisibility::Visible);
 		LobbyWidget->SetIsHost(false); // 클라이언트는 항상 false

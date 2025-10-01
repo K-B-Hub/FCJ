@@ -98,6 +98,7 @@ void UMultiSessionSubsystem::OnCreateSessionComplete(FName SessionName, bool bWa
 	if (bWasSuccessful)
 	{
 		serverName = SessionName;
+		bInServer = true;
 		FNamedOnlineSession* NamedSession = sessionInterface->GetNamedSession(SessionName);
 		if (NamedSession && NamedSession->SessionInfo.IsValid())
 		{
@@ -131,6 +132,7 @@ FString UMultiSessionSubsystem::GetCurrentSessionId() const
 void UMultiSessionSubsystem::OnDestroySessionComplete(FName SessionName, bool bWasSuccessful)
 {
 	serverName = NAME_None;
+	bInServer = false;
 }
 
 void UMultiSessionSubsystem::OnFindSessionsComplete(bool bWasSuccessful)
@@ -207,6 +209,7 @@ void UMultiSessionSubsystem::OnJoinSessionComplete(FName SessionName, EOnJoinSes
 				if (PC)
 				{
 					PC->ClientTravel(ConnectInfo, TRAVEL_Absolute);
+					bInServer = true;
 				}
 			}
 		}

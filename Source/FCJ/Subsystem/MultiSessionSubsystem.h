@@ -56,6 +56,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ClearPlayerRoles();
 
+	bool bInServer = false;
+
 private:
 	FName serverName;
 

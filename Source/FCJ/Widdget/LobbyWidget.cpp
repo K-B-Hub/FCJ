@@ -104,7 +104,8 @@ void ULobbyWidget::OnStartGameClicked()
 
 void ULobbyWidget::OnBackClicked()
 {
-	if (!bIsHost) return;
+	APlayerController* PC = GetOwningPlayer();
+	if (!PC) return;
 
 	UGameInstance* GameInstance = GetGameInstance();
 	if (!GameInstance) return;
@@ -112,43 +113,54 @@ void ULobbyWidget::OnBackClicked()
 	UMultiSessionSubsystem* SessionSubsystem = GameInstance->GetSubsystem<UMultiSessionSubsystem>();
 	if (!SessionSubsystem) return;
 
-	UWorld* World = GetWorld();
-	if (!World) return;
-
-	AGameStateBase* GameState = World->GetGameState();
-	if (GameState)
+	if (bIsHost)
 	{
-		// 클라이언트들 먼저 킥
-		TArray<APlayerState*> PlayerArray = GameState->PlayerArray;
-		for (APlayerState* PS : PlayerArray)
+		// 호스트: 세션 종료 및 모든 클라이언트 킥
+		UWorld* World = GetWorld();
+		if (!World) return;
+
+		AGameStateBase* GameState = World->GetGameState();
+		if (GameState)
 		{
-			if (PS)
+			// 클라이언트들 먼저 킥
+			TArray<APlayerState*> PlayerArray = GameState->PlayerArray;
+			for (APlayerState* PS : PlayerArray)
 			{
-				APlayerController* PC = Cast<APlayerController>(PS->GetOwner());
-				if (PC && !PC->HasAuthority())
+				if (PS)
 				{
-					// 클라이언트 연결 끊기
-					PC->ClientReturnToMainMenuWithTextReason(FText::FromString(TEXT("Host closed the session")));
+					APlayerController* ClientPC = Cast<APlayerController>(PS->GetOwner());
+					if (ClientPC && !ClientPC->HasAuthority())
+					{
+						// 클라이언트 연결 끊기
+						ClientPC->ClientReturnToMainMenuWithTextReason(FText::FromString(TEXT("Host closed the session")));
+					}
 				}
 			}
 		}
-	}
 
-	// 세션 파괴
-	SessionSubsystem->DestroyServer();
+		// 세션 파괴
+		SessionSubsystem->DestroyServer();
 
-	// 위젯 숨기기 및 메인 메뉴로
-	SetVisibility(ESlateVisibility::Hidden);
+		// 위젯 숨기기 및 메인 메뉴로
+		SetVisibility(ESlateVisibility::Hidden);
 
-	// MainMenuController를 통해 메인 메뉴 표시
-	APlayerController* PC = GetOwningPlayer();
-	if (PC && PC->IsA<AMainMenuController>())
-	{
-		AMainMenuController* MainMenuController = Cast<AMainMenuController>(PC);
-		if (MainMenuController)
+		// MainMenuController를 통해 메인 메뉴 표시
+		if (PC->IsA<AMainMenuController>())
 		{
-			MainMenuController->ShowMainMenuWidget();
+			AMainMenuController* MainMenuController = Cast<AMainMenuController>(PC);
+			if (MainMenuController)
+			{
+				MainMenuController->ShowMainMenuWidget();
+			}
 		}
+	}
+	else
+	{
+		// 클라이언트: 세션에서 나가기
+		SessionSubsystem->DestroyServer(); // 클라이언트도 자신의 세션 정보 정리
+
+		// 메인 메뉴로 복귀
+		UGameplayStatics::OpenLevel(PC, FName("MainMenu"));
 	}
 }
 
@@ -207,11 +219,11 @@ void ULobbyWidget::SetIsHost(bool bInIsHost)
 {
 	bIsHost = bInIsHost;
 
-	// 버튼 활성화/비활성화 - 호스트만 활성화
-	if (SwapRolesButton) SwapRolesButton->SetIsEnabled(bIsHost);
-	if (StartGameButton) StartGameButton->SetIsEnabled(bIsHost);
-	if (BackButton) BackButton->SetIsEnabled(bIsHost);
-	if (CopySessionIdButton) CopySessionIdButton->SetIsEnabled(true); // 복사 버튼은 모두 활성화
+	// 버튼 활성화/비활성화
+	if (SwapRolesButton) SwapRolesButton->SetIsEnabled(bIsHost); // 호스트만
+	if (StartGameButton) StartGameButton->SetIsEnabled(bIsHost); // 호스트만
+	if (BackButton) BackButton->SetIsEnabled(true); // 모두 활성화
+	if (CopySessionIdButton) CopySessionIdButton->SetIsEnabled(true); // 모두 활성화
 }
 
 void ULobbyWidget::UpdatePlayerRoles(const FString& Player1Name, const FString& Player2Name)
