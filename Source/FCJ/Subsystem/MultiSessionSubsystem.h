@@ -30,43 +30,29 @@ public:
 	void FindServers(FString SessionId);
 	UFUNCTION()
 	void DestroyServer();
+	UFUNCTION()
+	void LeaveSession();
 
 	void OnCreateSessionComplete(FName SessionName, bool bWasSuccessful);
 	void OnDestroySessionComplete(FName SessionName, bool bWasSuccessful);
 	void OnFindSessionsComplete(bool bWasSuccessful);
 	void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
+	void OnLeaveSessionComplete(FName SessionName, bool bWasSuccessful);
 
 	// 현재 세션 ID 가져오기
 	UFUNCTION(BlueprintCallable)
 	FString GetCurrentSessionId() const;
 
-	// 플레이어 역할 저장 (UniqueNetId를 문자열로 저장)
-	UFUNCTION(BlueprintCallable)
-	void SetPlayerRole(const FString& PlayerNetId, int32 Role);
-
-	// 플레이어 역할 가져오기
-	UFUNCTION(BlueprintCallable)
-	int32 GetPlayerRole(const FString& PlayerNetId) const;
-
-	// 역할 교체
-	UFUNCTION(BlueprintCallable)
-	void SwapPlayerRoles();
-
-	// 모든 플레이어 역할 초기화
-	UFUNCTION(BlueprintCallable)
-	void ClearPlayerRoles();
-
 	bool bInServer = false;
-
+    
 private:
 	FName serverName;
-
-	// 플레이어 역할 매핑 (UniqueNetId String -> Role Index)
-	// 0 = 1P (HoldingCat), 1 = 2P (BiteCat)
-	TMap<FString, int32> PlayerRoles;
 
 	// 찾고자 하는 세션 ID
 	FString TargetSessionId;
 
 	TSharedPtr<FOnlineSessionSearch> sessionSearch;
+
+	// 세션 재생성 플래그
+	bool bPendingCreateServer = false;
 };

@@ -41,21 +41,6 @@ void ULobbyWidget::NativeConstruct()
 		CopySessionIdButton->OnClicked.AddDynamic(this, &ULobbyWidget::OnCopySessionIdClicked);
 	}
 
-	// 플레이어 역할 초기화 (호스트만)
-	APlayerController* PC = GetOwningPlayer();
-	if (PC && PC->HasAuthority())
-	{
-		UGameInstance* GameInstance = GetGameInstance();
-		if (GameInstance)
-		{
-			UMultiSessionSubsystem* SessionSubsystem = GameInstance->GetSubsystem<UMultiSessionSubsystem>();
-			if (SessionSubsystem)
-			{
-				SessionSubsystem->ClearPlayerRoles();
-			}
-		}
-	}
-
 	// GameState 이벤트 바인딩
 	UWorld* World = GetWorld();
 	if (World)
@@ -63,9 +48,22 @@ void ULobbyWidget::NativeConstruct()
 		ALobbyGameState* LobbyGS = World->GetGameState<ALobbyGameState>();
 		if (LobbyGS)
 		{
+			UpdatePlayerRoles(LobbyGS->PlayerRoles.Num() > 0 ? LobbyGS->PlayerRoles[0].PlayerName : TEXT("Waiting..."),
+				LobbyGS->PlayerRoles.Num() > 1 ? LobbyGS->PlayerRoles[1].PlayerName : TEXT("Waiting..."));
+			
 			LobbyGS->OnPlayerRolesChanged.AddDynamic(this, &ULobbyWidget::UpdatePlayerList);
-			// 초기 업데이트
-			UpdatePlayerList();
+
+			// 서버인 경우 또는 데이터가 이미 복제된 경우 즉시 업데이트
+			if (GetOwningPlayer() && GetOwningPlayer()->HasAuthority())
+			{
+				UpdatePlayerList();
+			}
+			else if (!LobbyGS->SessionId.IsEmpty() || LobbyGS->PlayerRoles.Num() > 0)
+			{
+				// 클라이언트지만 이미 데이터가 복제된 경우
+				UpdatePlayerList();
+			}
+			// 그 외의 경우는 OnRep 함수가 호출될 때 자동으로 업데이트됨
 		}
 	}
 }
@@ -115,30 +113,7 @@ void ULobbyWidget::OnBackClicked()
 
 	if (bIsHost)
 	{
-		// 호스트: 세션 종료 및 모든 클라이언트 킥
-		UWorld* World = GetWorld();
-		if (!World) return;
-
-		AGameStateBase* GameState = World->GetGameState();
-		if (GameState)
-		{
-			// 클라이언트들 먼저 킥
-			TArray<APlayerState*> PlayerArray = GameState->PlayerArray;
-			for (APlayerState* PS : PlayerArray)
-			{
-				if (PS)
-				{
-					APlayerController* ClientPC = Cast<APlayerController>(PS->GetOwner());
-					if (ClientPC && !ClientPC->HasAuthority())
-					{
-						// 클라이언트 연결 끊기
-						ClientPC->ClientReturnToMainMenuWithTextReason(FText::FromString(TEXT("Host closed the session")));
-					}
-				}
-			}
-		}
-
-		// 세션 파괴
+		// 호스트: 세션 파괴 (클라이언트 강퇴는 DestroyServer 내부에서 처리)
 		SessionSubsystem->DestroyServer();
 
 		// 위젯 숨기기 및 메인 메뉴로
@@ -157,7 +132,7 @@ void ULobbyWidget::OnBackClicked()
 	else
 	{
 		// 클라이언트: 세션에서 나가기
-		SessionSubsystem->DestroyServer(); // 클라이언트도 자신의 세션 정보 정리
+		SessionSubsystem->LeaveSession(); // 클라이언트도 자신의 세션 정보 정리
 
 		// 메인 메뉴로 복귀
 		UGameplayStatics::OpenLevel(PC, FName("MainMenu"));

@@ -2,6 +2,8 @@
 
 
 #include "GameMode/MultiGameMode.h"
+
+#include "LobbyGameState.h"
 #include "PlayerController/MultiPlayerController.h"
 #include "PlayerCharacter/CatBase.h"
 #include "PlayerCharacter/AttackCat.h"
@@ -142,11 +144,8 @@ int32 AMultiGameMode::GetRoleFromSubsystem(APlayerController* PC)
 {
 	if (!PC) return -1;
 
-	UGameInstance* GameInstance = GetGameInstance();
-	if (!GameInstance) return -1;
-
-	UMultiSessionSubsystem* SessionSubsystem = GameInstance->GetSubsystem<UMultiSessionSubsystem>();
-	if (!SessionSubsystem) return -1;
+	ALobbyGameState* LobbyGS = GetWorld()->GetGameState<ALobbyGameState>();
+	if (!LobbyGS) return -1;
 
 	// PlayerState에서 UniqueNetId 가져오기
 	if (PC->PlayerState)
@@ -155,7 +154,7 @@ int32 AMultiGameMode::GetRoleFromSubsystem(APlayerController* PC)
 		if (UniqueId.IsValid())
 		{
 			FString PlayerNetId = UniqueId->ToString();
-			return SessionSubsystem->GetPlayerRole(PlayerNetId);
+			return LobbyGS->GetPlayerRole(PlayerNetId);
 		}
 	}
 

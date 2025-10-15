@@ -28,8 +28,9 @@ This project uses Unreal Engine 5.6's standard build system:
 ### Module Structure
 - **Main Module**: `FCJ` (Runtime module with Engine and UMG dependencies)
 - **Build Configuration**: Uses PCH (Precompiled Headers) with explicit/shared usage mode
-- **Dependencies**: Core, CoreUObject, Engine, InputCore, EnhancedInput, AIModule, Slate, SlateCore
-- **Note**: MotionWarping was removed from dependencies - parkour system now uses pure root motion with Flying movement mode
+- **Dependencies**: Core, CoreUObject, Engine, InputCore, EnhancedInput, AIModule, Slate, SlateCore, OnlineSubsystem, OnlineSubsystemSteam, ApplicationCore
+- **Plugins**: ModelingToolsEditorMode (Editor only), MotionWarping, OnlineSubsystemSteam
+- **Note**: MotionWarping plugin is enabled but the parkour system uses pure root motion with Flying movement mode without MotionWarping code dependencies
 
 ### Cooperative Platformer Character System
 The project implements a modular dual-cat cooperative system designed for platformer gameplay:
@@ -113,9 +114,20 @@ The project implements a modular dual-cat cooperative system designed for platfo
 ### UI System
 - **UMainMenuWidget**: Main menu with cooperative game options
   - Local Co-op Play: Two players on one machine
-  - Multi Play: Networked cooperative play
+  - Multi Play: Networked cooperative play via Steam
   - Settings: Configure controls for both cats
   - Level selection and cooperative challenge modes
+
+- **UMultiSessionWidget**: Session creation and browser for online multiplayer
+  - Create server functionality with session ID generation
+  - Find and join sessions by session ID
+  - Player role selection (AttackCat/BiteCat) with visual indicators
+
+- **ULobbyWidget**: Pre-game lobby for networked sessions
+  - Player readiness management
+  - Role assignment and swapping (0 = AttackCat, 1 = BiteCat)
+  - Session information display with replicated player roles
+  - Start game when all players ready
 
 - **USettingsWidget**: Configuration interface for game settings
   - Input sensitivity and control customization
@@ -137,7 +149,8 @@ Source/FCJ/
 ├── FCJ.Build.cs                 # Module build configuration
 ├── GameMode/                    # Game mode implementations
 │   ├── MultiGameMode.cpp/h      # Main multiplayer game mode
-│   └── MainMenuGameMode.cpp/h   # Menu mode
+│   ├── MainMenuGameMode.cpp/h   # Menu mode
+│   └── LobbyGameState.cpp/h     # Replicated lobby state with player role management
 ├── PlayerCharacter/             # Character implementations
 │   ├── CatBase.cpp/h           # Base character class with wall jump & special actions
 │   ├── AttackCat.cpp/h         # Combat-focused variant (minimal implementation)
@@ -145,13 +158,19 @@ Source/FCJ/
 ├── PlayerController/            # Controller implementations
 │   ├── MultiPlayerController.cpp/h # Enhanced Input with individual direction controls
 │   └── MainMenuController.cpp/h
+├── Subsystem/                   # Game subsystems
+│   └── MultiSessionSubsystem.cpp/h # Steam Online Subsystem integration for sessions
 ├── Actor/                       # Game objects and actors
 │   ├── WallJumpObject.cpp/h    # Wall surfaces for wall jumping mechanics
 │   ├── HoldingObject.cpp/h     # Objects that can be grabbed by BiteCat
 │   ├── Projectile.cpp/h        # Advanced projectile system with homing and knockback
 │   └── ProjectileVolume.cpp/h  # Spawns and manages projectiles in designated areas
+├── Animation/                   # Animation notify states
+│   └── ParryingNotifyState.cpp/h # Animation notify for parrying mechanics
 └── Widdget/                     # UI widgets (note: typo in folder name)
     ├── MainMenuWidget.cpp/h    # Main menu interface
+    ├── MultiSessionWidget.cpp/h # Session creation and browser
+    ├── LobbyWidget.cpp/h       # Pre-game lobby with role selection
     ├── SettingsWidget.cpp/h    # Settings configuration UI
     └── ESCWidget.cpp/h         # In-game pause menu with resume/main menu/exit options
 ```
@@ -266,8 +285,61 @@ AHoldingObject* CurrentHeldObject;
 - Player detection and targeting replicated across all clients
 - Configurable spawn patterns with networked synchronization
 
+### Online Session Management (Steam)
+
+The project uses **UMultiSessionSubsystem** (GameInstanceSubsystem) for Steam Online Subsystem integration with **ALobbyGameState** for replicated player role management:
+
+#### Session Management (UMultiSessionSubsystem)
+- **Session Lifecycle**: Handles creation, destruction, finding, and joining sessions via OnlineSubsystemSteam
+- **Session Discovery**: Finds sessions by exact session ID match
+- **bInServer Flag**: Tracks whether client is in an active session (persists across level changes)
+- **Client Disconnection Handling**:
+  - `DestroyServer()` kicks all remote clients using `IsLocalController()` to distinguish host from clients
+  - Uses `ClientReturnToMainMenu` RPC to notify clients of disconnection
+  - Clients clear `bInServer = false` before returning to main menu to prevent lobby widget from appearing
+
+**Key Functions**:
+```cpp
+void CreateServer();                          // Creates Steam session
+void FindServers(FString SessionId);          // Searches by session ID
+void DestroyServer();                         // Kicks clients and destroys session
+void LeaveSession();                          // Client leaves session
+FString GetCurrentSessionId() const;          // Gets active session ID
+```
+
+#### Player Role Management (ALobbyGameState)
+- **Centralized Role Management**: All player role logic lives in GameState (not Subsystem)
+- **Replicated State**: Uses `DOREPLIFETIME` for PlayerRoles array and SessionId
+- **RepNotify Pattern**: `OnRep_PlayerRoles()` and `OnRep_SessionId()` trigger UI updates on clients
+- **FPlayerRoleInfo Structure**:
+  ```cpp
+  struct FPlayerRoleInfo {
+    FString PlayerNetId;  // UniqueNetId for player identification
+    FString PlayerName;   // Display name
+    int32 Role;           // 0 = AttackCat, 1 = BiteCat
+  };
+  ```
+
+**Key Functions**:
+```cpp
+void AddPlayer(const FString& PlayerNetId, const FString& PlayerName);  // Called in PostLogin
+void RemovePlayer(const FString& PlayerNetId);                          // Called in Logout
+void SwapPlayerRoles();                                                  // Swaps roles between two players
+int32 GetPlayerRole(const FString& PlayerNetId) const;                   // Query player role by UniqueNetId
+```
+
+#### Integration Flow
+1. **Host Creates Session**: `CreateServer()` → `OnCreateSessionComplete()` → `ServerTravel("/Game/Levels/MainMenu?listen")`
+2. **Client Joins Session**: `FindServers(SessionId)` → `OnJoinSessionComplete()` → `ClientTravel(ConnectInfo)`
+3. **PostLogin Flow**: `MainMenuGameMode::PostLogin()` → `LobbyGameState::AddPlayer()` → Roles replicated to all clients
+4. **Lobby Widget**: Binds to `LobbyGameState::OnPlayerRolesChanged` delegate for automatic UI updates
+5. **Client Disconnection**:
+   - Voluntary: `LobbyWidget::OnBackClicked()` → `LeaveSession()` → `OpenLevel("MainMenu")`
+   - Kicked: Server calls `ClientReturnToMainMenu()` RPC → Client sets `bInServer = false` → `LeaveSession()` → `OpenLevel("MainMenu")`
+
 ### Multiplayer Design Patterns
 - **Listen Server Optimized**: Primary design for host-player scenarios with dedicated server support
+- **Steam Integration**: Uses OnlineSubsystemSteam for session management and matchmaking
 - **Authority-First**: All gameplay logic validated on server before client updates
 - **Visual Separation**: Effects and animations handled via multicast, logic via server RPCs
 - **State Synchronization**: Critical gameplay state replicated automatically via property replication

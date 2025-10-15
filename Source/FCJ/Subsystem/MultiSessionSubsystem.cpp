@@ -5,9 +5,11 @@
 #include "OnlineSubsystem.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "OnlineSessionSettings.h"
+#include "GameMode/LobbyGameState.h"
 #include "Interfaces/OnlineIdentityInterface.h"
 #include "PlayerController/MainMenuController.h"
 #include "Online/OnlineSessionNames.h"
+#include "GameFramework/PlayerState.h"
 
 #define NAME_GameSession FName(TEXT("GameSession"))
 
@@ -32,6 +34,7 @@ void UMultiSessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 			sessionInterface->OnDestroySessionCompleteDelegates.AddUObject(this, &UMultiSessionSubsystem::OnDestroySessionComplete);
 			sessionInterface->OnFindSessionsCompleteDelegates.AddUObject(this, &UMultiSessionSubsystem::OnFindSessionsComplete);
 			sessionInterface->OnJoinSessionCompleteDelegates.AddUObject(this, &UMultiSessionSubsystem::OnJoinSessionComplete);
+			sessionInterface->OnEndSessionCompleteDelegates.AddUObject(this, &UMultiSessionSubsystem::OnLeaveSessionComplete);
 		}
 	}
 }
@@ -46,7 +49,22 @@ void UMultiSessionSubsystem::Deinitialize()
 void UMultiSessionSubsystem::CreateServer()
 {
 	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("CreateServer"));
-	
+
+	// 기존 세션이 있으면 먼저 파괴
+	if (sessionInterface.IsValid())
+	{
+		FNamedOnlineSession* ExistingSession = sessionInterface->GetNamedSession(NAME_GameSession);
+		if (ExistingSession)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("Destroying existing session before creating new one"));
+			bPendingCreateServer = true; // 세션 파괴 후 재생성 플래그 설정
+			sessionInterface->DestroySession(NAME_GameSession);
+			return; // OnDestroySessionComplete에서 CreateServer를 다시 호출
+		}
+	}
+
+	bPendingCreateServer = false; // 플래그 초기화
+
 	FOnlineSessionSettings SessionSettings;
 	SessionSettings.bAllowJoinInProgress = true;
 	SessionSettings.bIsDedicated = false;
@@ -60,7 +78,7 @@ void UMultiSessionSubsystem::CreateServer()
 	{
 		SessionSettings.bIsLANMatch = true;		//NULL쓰면 true로
 	}
-	
+
 	sessionInterface->CreateSession(0, NAME_GameSession, SessionSettings);
 }
 
@@ -76,6 +94,18 @@ void UMultiSessionSubsystem::FindServers(FString SessionId)
 	// 타겟 세션 ID 저장
 	TargetSessionId = SessionId;
 
+	// 기존 세션이 있으면 먼저 떠나기
+	if (sessionInterface.IsValid())
+	{
+		FNamedOnlineSession* ExistingSession = sessionInterface->GetNamedSession(NAME_GameSession);
+		if (ExistingSession)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("Leaving existing session before finding new one"));
+			sessionInterface->EndSession(NAME_GameSession);
+			return; // OnLeaveSessionComplete에서 FindServers를 다시 호출
+		}
+	}
+
 	// 세션 검색 설정
 	sessionSearch = MakeShareable(new FOnlineSessionSearch());
 	sessionSearch->bIsLanQuery = IOnlineSubsystem::Get()->GetSubsystemName() == "NULL" ? true : false;
@@ -89,7 +119,42 @@ void UMultiSessionSubsystem::FindServers(FString SessionId)
 
 void UMultiSessionSubsystem::DestroyServer()
 {
-	sessionInterface->DestroySession(serverName);
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("DestroyServer: Starting..."));
+
+	// 모든 클라이언트 강퇴
+	UWorld* World = GetWorld();
+	if (World)
+	{
+		ALobbyGameState* LobbyGS = World->GetGameState<ALobbyGameState>();
+		if (LobbyGS)
+		{
+			TArray<APlayerState*> PlayerArray = LobbyGS->PlayerArray;
+			int32 ClientCount = 0;
+
+			for (APlayerState* PS : PlayerArray)
+			{
+				if (PS)
+				{
+					AMainMenuController* ClientPC = Cast<AMainMenuController>(PS->GetOwner());
+					if (ClientPC && !ClientPC->IsLocalController())
+					{
+						ClientCount++;
+						// 클라이언트 연결 끊기
+						ClientPC->ClientReturnToMainMenu();
+					}
+				}
+			}
+
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow,
+				FString::Printf(TEXT("DestroyServer: Kicked %d client(s)"), ClientCount));
+		}
+	}
+
+	// 세션 파괴
+	if (sessionInterface.IsValid())
+	{
+		sessionInterface->DestroySession(serverName);
+	}
 }
 
 void UMultiSessionSubsystem::OnCreateSessionComplete(FName SessionName, bool bWasSuccessful)
@@ -131,8 +196,28 @@ FString UMultiSessionSubsystem::GetCurrentSessionId() const
 
 void UMultiSessionSubsystem::OnDestroySessionComplete(FName SessionName, bool bWasSuccessful)
 {
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("OnDestroySessionComplete %s, %d"), *SessionName.ToString(), bWasSuccessful));
+
+	// 모든 상태 초기화
 	serverName = NAME_None;
 	bInServer = false;
+
+	if (bWasSuccessful)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, TEXT("Session destroyed successfully."));
+
+		// CreateServer가 기존 세션 파괴 후 재시도하는 경우, 다시 CreateServer 호출
+		if (bPendingCreateServer)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, TEXT("Retrying CreateServer after destroying old session"));
+			bPendingCreateServer = false;
+			CreateServer();
+		}
+		else
+		{
+			TargetSessionId.Empty();
+		}
+	}
 }
 
 void UMultiSessionSubsystem::OnFindSessionsComplete(bool bWasSuccessful)
@@ -220,39 +305,52 @@ void UMultiSessionSubsystem::OnJoinSessionComplete(FName SessionName, EOnJoinSes
 	}
 }
 
-void UMultiSessionSubsystem::SetPlayerRole(const FString& PlayerNetId, int32 Role)
+void UMultiSessionSubsystem::LeaveSession()
 {
-	PlayerRoles.Add(PlayerNetId, Role);
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green,
-		FString::Printf(TEXT("Player %s assigned role: %d"), *PlayerNetId, Role));
-}
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("LeaveSession"));
 
-int32 UMultiSessionSubsystem::GetPlayerRole(const FString& PlayerNetId) const
-{
-	const int32* Role = PlayerRoles.Find(PlayerNetId);
-	return Role ? *Role : -1;
-}
-
-void UMultiSessionSubsystem::SwapPlayerRoles()
-{
-	if (PlayerRoles.Num() < 2) return;
-
-	TArray<FString> PlayerIds;
-	PlayerRoles.GetKeys(PlayerIds);
-
-	if (PlayerIds.Num() >= 2)
+	if (sessionInterface.IsValid())
 	{
-		int32 Role1 = PlayerRoles[PlayerIds[0]];
-		int32 Role2 = PlayerRoles[PlayerIds[1]];
-
-		PlayerRoles[PlayerIds[0]] = Role2;
-		PlayerRoles[PlayerIds[1]] = Role1;
-
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Player roles swapped in Subsystem"));
+		FNamedOnlineSession* Session = sessionInterface->GetNamedSession(NAME_GameSession);
+		if (Session)
+		{
+			sessionInterface->EndSession(NAME_GameSession);
+		}
+		else
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("No session to leave"));
+		}
 	}
 }
 
-void UMultiSessionSubsystem::ClearPlayerRoles()
+void UMultiSessionSubsystem::OnLeaveSessionComplete(FName SessionName, bool bWasSuccessful)
 {
-	PlayerRoles.Empty();
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("OnLeaveSessionComplete %s, %d"), *SessionName.ToString(), bWasSuccessful));
+
+	// 모든 상태 초기화
+	bInServer = false;
+
+	if (bWasSuccessful)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, TEXT("Left session successfully. Ready to join new session."));
+
+		// FindServers가 기존 세션 떠나기 후 재시도하는 경우, 다시 FindServers 호출
+		if (!TargetSessionId.IsEmpty())
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, TEXT("Retrying FindServers after leaving session"));
+			FString SessionIdCopy = TargetSessionId;
+			TargetSessionId.Empty();
+			FindServers(SessionIdCopy);
+		}
+	}
+
+	// 세션을 떠난 후에는 세션을 파괴
+	if (sessionInterface.IsValid())
+	{
+		FNamedOnlineSession* Session = sessionInterface->GetNamedSession(SessionName);
+		if (Session)
+		{
+			sessionInterface->DestroySession(SessionName);
+		}
+	}
 }

@@ -49,4 +49,16 @@ public:
 	// 클라이언트 RPC - 로비 위젯 표시
 	UFUNCTION(Client, Reliable)
 	void ClientShowLobbyWidget();
+
+	// 서버에 의해 강퇴될 때 호출됨
+	UFUNCTION(Client, Reliable)
+	void ClientReturnToMainMenu();
+
+private:
+	// 헬퍼 함수: 모든 위젯 숨기기
+	void HideAllWidgets();
+
+	// 헬퍼 함수: 위젯 생성 또는 가져오기
+	template<typename T>
+	T* GetOrCreateWidget(TSubclassOf<T> WidgetClass, T*& WidgetRef);
 };

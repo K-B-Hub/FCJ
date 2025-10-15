@@ -38,6 +38,9 @@ void AMainMenuGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
 
+	ALobbyGameState* LobbyGS = GetGameState<ALobbyGameState>();
+	if (!LobbyGS) return;
+
 	// 세션 ID를 GameState에 설정
 	UGameInstance* GameInstance = GetGameInstance();
 	if (GameInstance)
@@ -46,94 +49,68 @@ void AMainMenuGameMode::PostLogin(APlayerController* NewPlayer)
 		if (SessionSubsystem)
 		{
 			FString CurrentSessionId = SessionSubsystem->GetCurrentSessionId();
-			ALobbyGameState* LobbyGS = GetGameState<ALobbyGameState>();
-			if (LobbyGS)
-			{
-				LobbyGS->SessionId = CurrentSessionId;
-			}
+			LobbyGS->SessionId = CurrentSessionId;
 		}
 	}
 
-	// 로비 위젯 표시 (서버와 클라이언트 모두)
+	// 플레이어를 LobbyGameState에 추가
 	if (NewPlayer)
 	{
+		APlayerState* PS = NewPlayer->PlayerState;
+		if (PS)
+		{
+			FUniqueNetIdRepl UniqueId = PS->GetUniqueId();
+			FString PlayerNetId = UniqueId.IsValid() ? UniqueId->ToString() : TEXT("Unknown");
+			FString PlayerName = PS->GetPlayerName();
+
+			LobbyGS->AddPlayer(PlayerNetId, PlayerName);
+		}
+
+		// 로비 위젯 표시 (서버와 클라이언트 모두)
 		AMainMenuController* MainMenuController = Cast<AMainMenuController>(NewPlayer);
 		if (MainMenuController)
 		{
 			UMultiSessionSubsystem* Server = GetGameInstance()->GetSubsystem<UMultiSessionSubsystem>();
-			if (NewPlayer->HasAuthority() && NewPlayer->IsLocalController() && Server->bInServer)
+			if (NewPlayer->HasAuthority() && NewPlayer->IsLocalController() && Server && Server->bInServer)
 			{
 				// 서버(호스트)는 직접 로비 위젯 표시
-				FString SessionId = Server ? Server->GetCurrentSessionId() : FString();
+				FString SessionId = Server->GetCurrentSessionId();
 				MainMenuController->ShowLobbyWidget(SessionId);
 			}
-			else
+			else if (!NewPlayer->HasAuthority())
 			{
 				// 클라이언트는 RPC로 로비 위젯 표시
 				MainMenuController->ClientShowLobbyWidget();
 			}
 		}
 	}
+}
 
-	// GameState 역할 정보 업데이트
-	UpdateGameStateRoles();
+void AMainMenuGameMode::Logout(AController* Exiting)
+{
+	Super::Logout(Exiting);
+
+	// 플레이어를 LobbyGameState에서 제거
+	ALobbyGameState* LobbyGS = GetGameState<ALobbyGameState>();
+	if (LobbyGS && Exiting)
+	{
+		APlayerState* PS = Exiting->PlayerState;
+		if (PS)
+		{
+			FUniqueNetIdRepl UniqueId = PS->GetUniqueId();
+			FString PlayerNetId = UniqueId.IsValid() ? UniqueId->ToString() : TEXT("Unknown");
+
+			// NetId로 플레이어 제거 (내부에서 역할 재할당도 처리됨)
+			LobbyGS->RemovePlayer(PlayerNetId);
+		}
+	}
 }
 
 void AMainMenuGameMode::SwapPlayerRoles()
 {
-	UGameInstance* GameInstance = GetGameInstance();
-	if (!GameInstance) return;
-
-	UMultiSessionSubsystem* SessionSubsystem = GameInstance->GetSubsystem<UMultiSessionSubsystem>();
-	if (!SessionSubsystem) return;
-
-	// Subsystem에서 역할 교체
-	SessionSubsystem->SwapPlayerRoles();
-
-	// GameState 업데이트
-	UpdateGameStateRoles();
-}
-
-void AMainMenuGameMode::UpdateGameStateRoles()
-{
 	ALobbyGameState* LobbyGS = GetGameState<ALobbyGameState>();
-	if (!LobbyGS) return;
-
-	UGameInstance* GameInstance = GetGameInstance();
-	if (!GameInstance) return;
-
-	UMultiSessionSubsystem* SessionSubsystem = GameInstance->GetSubsystem<UMultiSessionSubsystem>();
-	if (!SessionSubsystem) return;
-
-	TArray<FPlayerRoleInfo> RoleInfos;
-
-	// 모든 플레이어의 역할 정보 수집
-	for (APlayerState* PS : LobbyGS->PlayerArray)
+	if (LobbyGS)
 	{
-		if (PS)
-		{
-			FUniqueNetIdRepl UniqueId = PS->GetUniqueId();
-			if (UniqueId.IsValid())
-			{
-				FString PlayerNetId = UniqueId->ToString();
-				int32 role = SessionSubsystem->GetPlayerRole(PlayerNetId);
-
-				// 역할이 설정되지 않았으면 새로 할당
-				if (role == -1)
-				{
-					role = RoleInfos.Num(); // 0, 1 순서대로 할당
-					SessionSubsystem->SetPlayerRole(PlayerNetId, role);
-				}
-
-				FPlayerRoleInfo Info(PS->GetPlayerName(), role);
-				RoleInfos.Add(Info);
-
-				GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Green,
-					FString::Printf(TEXT("UpdateGameState: %s -> Role %d"), *PS->GetPlayerName(), role));
-			}
-		}
+		LobbyGS->SwapPlayerRoles();
 	}
-
-	// GameState에 업데이트 (리플리케이트됨)
-	LobbyGS->UpdatePlayerRoles(RoleInfos);
 }

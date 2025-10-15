@@ -21,12 +21,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SwapPlayerRoles();
 
-	// GameState 업데이트
-	void UpdateGameStateRoles();
-
 protected:
 	virtual void BeginPlay() override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
+	virtual void Logout(AController* Exiting) override;
 
 private:
 	// Apply saved display settings

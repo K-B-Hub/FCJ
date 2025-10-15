@@ -7,6 +7,7 @@
 #include "FCJ/Widdget/MultiSessionWidget.h"
 #include "FCJ/Widdget/LobbyWidget.h"
 #include "Blueprint/UserWidget.h"
+#include "Kismet/GameplayStatics.h"
 
 void AMainMenuController::BeginPlay()
 {
@@ -15,140 +16,138 @@ void AMainMenuController::BeginPlay()
 	bShowMouseCursor = true;
 	SetInputMode(FInputModeUIOnly());
 
-	if (IsLocalPlayerController())
+	if (!IsLocalPlayerController())
 	{
-		UMultiSessionSubsystem* Server = GetGameInstance()->GetSubsystem<UMultiSessionSubsystem>();
-		bool bInServer = Server && Server->bInServer;
+		return;
+	}
 
-		// 세션에 있는 경우 LobbyWidget 표시
-		if (bInServer)
-		{
-			if (LobbyWidgetClass)
-			{
-				LobbyWidget = CreateWidget<ULobbyWidget>(this, LobbyWidgetClass);
-				if (LobbyWidget)
-				{
-					LobbyWidget->AddToViewport();
-					LobbyWidget->SetVisibility(ESlateVisibility::Visible);
+	// 세션 상태 확인
+	UMultiSessionSubsystem* SessionSubsystem = GetGameInstance()->GetSubsystem<UMultiSessionSubsystem>();
+	bool bInServer = SessionSubsystem && SessionSubsystem->bInServer;
 
-					// 세션 ID 설정 (있는 경우)
-					FString SessionId = Server->GetCurrentSessionId();
-					if (!SessionId.IsEmpty())
-					{
-						LobbyWidget->SetSessionId(SessionId);
-					}
-
-					// 호스트/클라이언트 구분
-					LobbyWidget->SetIsHost(HasAuthority());
-
-					GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("LobbyWidget created at BeginPlay (in server)"));
-				}
-			}
-		}
-		else
-		{
-			// 세션에 없는 경우 MainMenu 표시
-			if (MainMenuWidgetClass)
-			{
-				MainMenuWidget = CreateWidget<UMainMenuWidget>(this, MainMenuWidgetClass);
-				if (MainMenuWidget)
-				{
-					MainMenuWidget->AddToViewport();
-					MainMenuWidget->OnMultiPlayButtonClicked.AddDynamic(this, &AMainMenuController::ShowMultiSessionWidget);
-				}
-			}
-
-			if (MultiSessionWidgetClass)
-			{
-				MultiSessionWidget = CreateWidget<UMultiSessionWidget>(this, MultiSessionWidgetClass);
-				if (MultiSessionWidget)
-				{
-					MultiSessionWidget->AddToViewport();
-					MultiSessionWidget->SetVisibility(ESlateVisibility::Hidden);
-					MultiSessionWidget->OnBackButtonClicked.AddDynamic(this, &AMainMenuController::ShowMainMenuWidget);
-				}
-			}
-		}
+	// 세션에 있으면 로비 표시, 없으면 메인 메뉴 표시
+	if (bInServer)
+	{
+		FString SessionId = SessionSubsystem->GetCurrentSessionId();
+		ShowLobbyWidget(SessionId);
+	}
+	else
+	{
+		ShowMainMenuWidget();
 	}
 }
 
 void AMainMenuController::ShowMultiSessionWidget()
 {
-	if (MainMenuWidget && MultiSessionWidget)
+	HideAllWidgets();
+
+	UMultiSessionWidget* Widget = GetOrCreateWidget(MultiSessionWidgetClass, MultiSessionWidget);
+	if (Widget)
 	{
-		MainMenuWidget->SetVisibility(ESlateVisibility::Hidden);
-		MultiSessionWidget->SetVisibility(ESlateVisibility::Visible);
+		Widget->SetVisibility(ESlateVisibility::Visible);
+		if (!Widget->OnBackButtonClicked.IsBound())
+		{
+			Widget->OnBackButtonClicked.AddDynamic(this, &AMainMenuController::ShowMainMenuWidget);
+		}
 	}
 }
 
 void AMainMenuController::ShowMainMenuWidget()
 {
-	if (MainMenuWidget && MultiSessionWidget)
+	HideAllWidgets();
+
+	// 로비 위젯은 완전히 제거 (세션 종료)
+	if (LobbyWidget)
 	{
-		MultiSessionWidget->SetVisibility(ESlateVisibility::Hidden);
-		MainMenuWidget->SetVisibility(ESlateVisibility::Visible);
+		LobbyWidget->RemoveFromParent();
+		LobbyWidget = nullptr;
+	}
+
+	UMainMenuWidget* Widget = GetOrCreateWidget(MainMenuWidgetClass, MainMenuWidget);
+	if (Widget)
+	{
+		Widget->SetVisibility(ESlateVisibility::Visible);
+		if (!Widget->OnMultiPlayButtonClicked.IsBound())
+		{
+			Widget->OnMultiPlayButtonClicked.AddDynamic(this, &AMainMenuController::ShowMultiSessionWidget);
+		}
 	}
 }
 
 void AMainMenuController::ShowLobbyWidget(const FString& SessionId)
 {
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan,
-		FString::Printf(TEXT("ShowLobbyWidget called: LobbyWidget=%s, SessionId=%s, HasAuthority=%d, IsLocal=%d"),
-		LobbyWidget ? TEXT("Valid") : TEXT("NULL"), *SessionId, HasAuthority(), IsLocalController()));
+	HideAllWidgets();
 
-	if (!LobbyWidget)
+	ULobbyWidget* Widget = GetOrCreateWidget(LobbyWidgetClass, LobbyWidget);
+	if (Widget)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("LobbyWidget is NULL! Creating now..."));
-		if (LobbyWidgetClass)
-		{
-			LobbyWidget = CreateWidget<ULobbyWidget>(this, LobbyWidgetClass);
-			if (LobbyWidget)
-			{
-				LobbyWidget->AddToViewport();
-			}
-		}
-	}
-
-	if (LobbyWidget)
-	{
-		// 다른 위젯 숨기기
-		if (MainMenuWidget)
-		{
-			MainMenuWidget->SetVisibility(ESlateVisibility::Hidden);
-		}
-		if (MultiSessionWidget)
-		{
-			MultiSessionWidget->SetVisibility(ESlateVisibility::Hidden);
-		}
-
-		// 로비 위젯 표시 및 세션 ID 설정
-		LobbyWidget->SetVisibility(ESlateVisibility::Visible);
-		LobbyWidget->SetSessionId(SessionId);
-		LobbyWidget->SetIsHost(HasAuthority());
-
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("LobbyWidget shown successfully!"));
-	}
-	else
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Failed to create LobbyWidget!"));
+		Widget->SetVisibility(ESlateVisibility::Visible);
+		Widget->SetSessionId(SessionId);
+		Widget->SetIsHost(HasAuthority());
 	}
 }
 
 void AMainMenuController::ClientShowLobbyWidget_Implementation()
 {
+	UMultiSessionSubsystem* SessionSubsystem = GetGameInstance()->GetSubsystem<UMultiSessionSubsystem>();
+	FString SessionId = SessionSubsystem ? SessionSubsystem->GetCurrentSessionId() : TEXT("");
+
+	ShowLobbyWidget(SessionId);
+
 	if (LobbyWidget)
 	{
-		// 다른 위젯 숨기기
-		if (MainMenuWidget)
-		{
-			MainMenuWidget->SetVisibility(ESlateVisibility::Hidden);
-		}
-		if (MultiSessionWidget)
-		{
-			MultiSessionWidget->SetVisibility(ESlateVisibility::Hidden);
-		}
-		// 로비 위젯 표시
-		LobbyWidget->SetVisibility(ESlateVisibility::Visible);
 		LobbyWidget->SetIsHost(false); // 클라이언트는 항상 false
 	}
+}
+
+void AMainMenuController::ClientReturnToMainMenu_Implementation()
+{
+	// 세션 정보 정리
+	UGameInstance* GameInstance = GetGameInstance();
+	if (GameInstance)
+	{
+		UMultiSessionSubsystem* SessionSubsystem = GameInstance->GetSubsystem<UMultiSessionSubsystem>();
+		if (SessionSubsystem)
+		{
+			// 세션 정리
+			SessionSubsystem->LeaveSession();
+
+			GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Yellow, TEXT("Client session cleared, returning to main menu"));
+		}
+	}
+	// 메인 메뉴로 복귀
+	UGameplayStatics::OpenLevel(this, FName("MainMenu"));
+}
+
+// ========== 헬퍼 함수 ==========
+
+void AMainMenuController::HideAllWidgets()
+{
+	if (MainMenuWidget)
+	{
+		MainMenuWidget->SetVisibility(ESlateVisibility::Hidden);
+	}
+	if (MultiSessionWidget)
+	{
+		MultiSessionWidget->SetVisibility(ESlateVisibility::Hidden);
+	}
+	if (LobbyWidget)
+	{
+		LobbyWidget->SetVisibility(ESlateVisibility::Hidden);
+	}
+}
+
+template<typename T>
+T* AMainMenuController::GetOrCreateWidget(TSubclassOf<T> WidgetClass, T*& WidgetRef)
+{
+	if (!WidgetRef && WidgetClass)
+	{
+		WidgetRef = CreateWidget<T>(this, WidgetClass);
+		if (WidgetRef)
+		{
+			WidgetRef->AddToViewport();
+			WidgetRef->SetVisibility(ESlateVisibility::Hidden);
+		}
+	}
+	return WidgetRef;
 }
