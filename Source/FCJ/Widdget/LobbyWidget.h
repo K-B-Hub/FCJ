@@ -20,6 +20,7 @@ class FCJ_API ULobbyWidget : public UUserWidget
 
 protected:
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 
 	// 플레이어 목록을 표시할 컨테이너
 	UPROPERTY(meta = (BindWidget))

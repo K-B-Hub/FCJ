@@ -37,6 +37,26 @@ void AMainMenuController::BeginPlay()
 	}
 }
 
+void AMainMenuController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	// 디버그: 파괴 시점 추적
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red,
+		FString::Printf(TEXT("🔴 MainMenuController::EndPlay() - Reason: %d"), static_cast<int32>(EndPlayReason)));
+
+	// 위젯 델리게이트 명시적 해제
+	if (MainMenuWidget)
+	{
+		MainMenuWidget->OnMultiPlayButtonClicked.RemoveDynamic(this, &AMainMenuController::ShowMultiSessionWidget);
+	}
+
+	if (MultiSessionWidget)
+	{
+		MultiSessionWidget->OnBackButtonClicked.RemoveDynamic(this, &AMainMenuController::ShowMainMenuWidget);
+	}
+}
+
 void AMainMenuController::ShowMultiSessionWidget()
 {
 	HideAllWidgets();

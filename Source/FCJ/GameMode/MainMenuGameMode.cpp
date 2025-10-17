@@ -20,8 +20,21 @@ void AMainMenuGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// 디버그: 생성 시점 추적
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green,
+		TEXT("🟢 MainMenuGameMode::BeginPlay() - GameMode Created"));
+
 	// Apply saved display settings on game startup
 	ApplySavedDisplaySettings();
+}
+
+void AMainMenuGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// 디버그: 파괴 시점 추적
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red,
+		FString::Printf(TEXT("🔴 MainMenuGameMode::EndPlay() - Reason: %d"), static_cast<int32>(EndPlayReason)));
+
+	Super::EndPlay(EndPlayReason);
 }
 
 void AMainMenuGameMode::ApplySavedDisplaySettings()

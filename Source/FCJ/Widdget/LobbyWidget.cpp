@@ -68,6 +68,33 @@ void ULobbyWidget::NativeConstruct()
 	}
 }
 
+void ULobbyWidget::NativeDestruct()
+{
+	Super::NativeDestruct();
+
+	// 디버그: 파괴 시점 추적
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange,
+		TEXT("🟠 LobbyWidget::NativeDestruct() - Widget Destroyed"));
+
+	// GameState 델리게이트 명시적 해제
+	UWorld* World = GetWorld();
+	if (World)
+	{
+		ALobbyGameState* LobbyGS = World->GetGameState<ALobbyGameState>();
+		if (LobbyGS)
+		{
+			LobbyGS->OnPlayerRolesChanged.RemoveDynamic(this, &ULobbyWidget::UpdatePlayerList);
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow,
+				TEXT("✅ LobbyWidget: GameState delegate unbound successfully"));
+		}
+		else
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow,
+				TEXT("⚠️ LobbyWidget: GameState already destroyed (expected during ServerTravel)"));
+		}
+	}
+}
+
 void ULobbyWidget::OnSwapRolesClicked()
 {
 	if (!bIsHost) return;

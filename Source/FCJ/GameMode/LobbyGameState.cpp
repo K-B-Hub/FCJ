@@ -9,6 +9,24 @@ ALobbyGameState::ALobbyGameState()
 	bReplicates = true;
 }
 
+void ALobbyGameState::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// 디버그: 생성 시점 추적
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green,
+		TEXT("🟢 LobbyGameState::BeginPlay() - GameState Created"));
+}
+
+void ALobbyGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// 디버그: 파괴 시점 추적
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red,
+		FString::Printf(TEXT("🔴 LobbyGameState::EndPlay() - Reason: %d"), static_cast<int32>(EndPlayReason)));
+
+	Super::EndPlay(EndPlayReason);
+}
+
 void ALobbyGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);

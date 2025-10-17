@@ -5,6 +5,7 @@
 #include "OnlineSubsystem.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "OnlineSessionSettings.h"
+#include "../../../../../UE_5.6/Engine/Source/Runtime/Engine/Classes/Kismet/GameplayStatics.h"
 #include "GameMode/LobbyGameState.h"
 #include "Interfaces/OnlineIdentityInterface.h"
 #include "PlayerController/MainMenuController.h"
@@ -175,7 +176,9 @@ void UMultiSessionSubsystem::OnCreateSessionComplete(FName SessionName, bool bWa
 			if (World)
 			{
 				// MainMenu 레벨을 리슨 서버로 전환
-				World->ServerTravel("/Game/Levels/MainMenu?listen");
+				//World->ServerTravel("/Game/Levels/MainMenu?listen");
+				UGameplayStatics::OpenLevel(this, FName("MainMenu"), true, FString("listen"));
+    
 			}
 		}
 	}

@@ -45,6 +45,8 @@ public:
 	ALobbyGameState();
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	// 플레이어 역할 변경 이벤트
 	UPROPERTY(BlueprintAssignable, Category = "Lobby")
