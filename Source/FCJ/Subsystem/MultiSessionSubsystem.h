@@ -43,9 +43,21 @@ public:
 	UFUNCTION(BlueprintCallable)
 	FString GetCurrentSessionId() const;
 
+	// 플레이어 역할 정보 관리 (레벨 전환 시에도 유지됨)
+	UFUNCTION(BlueprintCallable)
+	void SetPlayerRole(const FString& NetId, int32 Role);
+
+	UFUNCTION(BlueprintCallable)
+	int32 GetPlayerRole(const FString& NetId) const;
+
+	UFUNCTION(BlueprintCallable)
+	void ClearPlayerRoles();
+
 	bool bInServer = false;
-    
+
 private:
+	// 플레이어 역할 정보 저장 (NetId -> Role: 0 = AttackCat, 1 = BiteCat)
+	TMap<FString, int32> PlayerRoles;
 	FName serverName;
 
 	// 찾고자 하는 세션 ID

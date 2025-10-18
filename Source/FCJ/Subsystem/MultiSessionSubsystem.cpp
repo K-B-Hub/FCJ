@@ -9,8 +9,10 @@
 #include "GameMode/LobbyGameState.h"
 #include "Interfaces/OnlineIdentityInterface.h"
 #include "PlayerController/MainMenuController.h"
+#include "PlayerController/MultiPlayerController.h"
 #include "Online/OnlineSessionNames.h"
 #include "GameFramework/PlayerState.h"
+#include "GameFramework/GameStateBase.h"
 
 #define NAME_GameSession FName(TEXT("GameSession"))
 
@@ -126,28 +128,48 @@ void UMultiSessionSubsystem::DestroyServer()
 	UWorld* World = GetWorld();
 	if (World)
 	{
-		ALobbyGameState* LobbyGS = World->GetGameState<ALobbyGameState>();
-		if (LobbyGS)
+		// GameStateBase를 사용하여 모든 레벨에서 작동하도록 함
+		AGameStateBase* GameState = World->GetGameState();
+		if (GameState)
 		{
-			TArray<APlayerState*> PlayerArray = LobbyGS->PlayerArray;
+			TArray<APlayerState*> PlayerArray = GameState->PlayerArray;
 			int32 ClientCount = 0;
 
 			for (APlayerState* PS : PlayerArray)
 			{
 				if (PS)
 				{
-					AMainMenuController* ClientPC = Cast<AMainMenuController>(PS->GetOwner());
-					if (ClientPC && !ClientPC->IsLocalController())
+					APlayerController* PC = Cast<APlayerController>(PS->GetOwner());
+					if (PC && !PC->IsLocalController())
 					{
 						ClientCount++;
-						// 클라이언트 연결 끊기
-						ClientPC->ClientReturnToMainMenu();
+
+						// 컨트롤러 타입에 따라 적절한 RPC 호출
+						if (AMainMenuController* MainMenuPC = Cast<AMainMenuController>(PC))
+						{
+							// 로비/메인메뉴 레벨
+							MainMenuPC->ClientReturnToMainMenu();
+							GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan,
+								TEXT("Kicked MainMenuController client"));
+						}
+						else if (AMultiPlayerController* MultiPC = Cast<AMultiPlayerController>(PC))
+						{
+							// 게임 레벨
+							MultiPC->ClientReturnToMainMenu();
+							GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan,
+								TEXT("Kicked MultiPlayerController client"));
+						}
 					}
 				}
 			}
 
 			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow,
 				FString::Printf(TEXT("DestroyServer: Kicked %d client(s)"), ClientCount));
+		}
+		else
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange,
+				TEXT("DestroyServer: No GameState found"));
 		}
 	}
 
@@ -356,4 +378,26 @@ void UMultiSessionSubsystem::OnLeaveSessionComplete(FName SessionName, bool bWas
 			sessionInterface->DestroySession(SessionName);
 		}
 	}
+}
+
+void UMultiSessionSubsystem::SetPlayerRole(const FString& NetId, int32 Role)
+{
+	PlayerRoles.Add(NetId, Role);
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan,
+		FString::Printf(TEXT("SetPlayerRole: %s -> %d"), *NetId, Role));
+}
+
+int32 UMultiSessionSubsystem::GetPlayerRole(const FString& NetId) const
+{
+	if (const int32* Role = PlayerRoles.Find(NetId))
+	{
+		return *Role;
+	}
+	return -1; // 역할이 설정되지 않음
+}
+
+void UMultiSessionSubsystem::ClearPlayerRoles()
+{
+	PlayerRoles.Empty();
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("Player roles cleared"));
 }

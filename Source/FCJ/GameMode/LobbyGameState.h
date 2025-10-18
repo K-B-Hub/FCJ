@@ -86,4 +86,8 @@ public:
 
 	UFUNCTION()
 	void OnRep_SessionId();
+
+private:
+	// 모든 역할 정보를 MultiSessionSubsystem에 동기화
+	void SyncRolesToSubsystem();
 };

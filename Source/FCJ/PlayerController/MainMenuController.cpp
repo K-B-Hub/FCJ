@@ -129,7 +129,10 @@ void AMainMenuController::ClientReturnToMainMenu_Implementation()
 		UMultiSessionSubsystem* SessionSubsystem = GameInstance->GetSubsystem<UMultiSessionSubsystem>();
 		if (SessionSubsystem)
 		{
-			// 세션 정리
+			// 레벨 전환 전에 즉시 bInServer를 false로 설정 (타이밍 문제 방지)
+			SessionSubsystem->bInServer = false;
+
+			// 세션 정리 (비동기로 처리됨)
 			SessionSubsystem->LeaveSession();
 
 			GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Yellow, TEXT("Client session cleared, returning to main menu"));

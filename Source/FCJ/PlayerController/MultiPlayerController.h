@@ -178,4 +178,8 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void ExitGame();
+
+	// RPC for server to kick client back to main menu
+	UFUNCTION(Client, Reliable, Category = "Network")
+	void ClientReturnToMainMenu();
 };

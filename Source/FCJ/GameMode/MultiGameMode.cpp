@@ -144,20 +144,56 @@ int32 AMultiGameMode::GetRoleFromSubsystem(APlayerController* PC)
 {
 	if (!PC) return -1;
 
-	ALobbyGameState* LobbyGS = GetWorld()->GetGameState<ALobbyGameState>();
-	if (!LobbyGS) return -1;
-
 	// PlayerState에서 UniqueNetId 가져오기
-	if (PC->PlayerState)
+	if (!PC->PlayerState)
 	{
-		FUniqueNetIdRepl UniqueId = PC->PlayerState->GetUniqueId();
-		if (UniqueId.IsValid())
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("PlayerState is null"));
+		return -1;
+	}
+
+	FUniqueNetIdRepl UniqueId = PC->PlayerState->GetUniqueId();
+	if (!UniqueId.IsValid())
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("UniqueNetId is invalid"));
+		return -1;
+	}
+
+	FString PlayerNetId = UniqueId->ToString();
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow,
+		FString::Printf(TEXT("Getting role for NetId: %s"), *PlayerNetId));
+
+	// MultiSessionSubsystem에서 역할 가져오기 (레벨 전환 시에도 유지됨)
+	UGameInstance* GameInstance = GetGameInstance();
+	if (GameInstance)
+	{
+		UMultiSessionSubsystem* SessionSubsystem = GameInstance->GetSubsystem<UMultiSessionSubsystem>();
+		if (SessionSubsystem)
 		{
-			FString PlayerNetId = UniqueId->ToString();
-			return LobbyGS->GetPlayerRole(PlayerNetId);
+			int32 role = SessionSubsystem->GetPlayerRole(PlayerNetId);
+			if (role >= 0)
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green,
+					FString::Printf(TEXT("Found role in Subsystem: %d"), role));
+				return role;
+			}
+			else
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, TEXT("No role found in Subsystem"));
+			}
 		}
 	}
 
+	// 폴백: LobbyGameState에서 가져오기 (로비에 있을 경우)
+	ALobbyGameState* LobbyGS = GetWorld()->GetGameState<ALobbyGameState>();
+	if (LobbyGS)
+	{
+		int32 role = LobbyGS->GetPlayerRole(PlayerNetId);
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan,
+			FString::Printf(TEXT("Found role in LobbyGameState (fallback): %d"), role));
+		return role;
+	}
+
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("No role found anywhere"));
 	return -1;
 }
 

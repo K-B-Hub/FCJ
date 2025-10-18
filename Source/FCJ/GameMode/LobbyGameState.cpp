@@ -3,6 +3,7 @@
 
 #include "GameMode/LobbyGameState.h"
 #include "Net/UnrealNetwork.h"
+#include "Subsystem/MultiSessionSubsystem.h"
 
 ALobbyGameState::ALobbyGameState()
 {
@@ -42,6 +43,8 @@ void ALobbyGameState::UpdatePlayerRoles(const TArray<FPlayerRoleInfo>& NewRoles)
 		PlayerRoles = NewRoles;
 		// 서버에서도 이벤트 브로드캐스트
 		OnPlayerRolesChanged.Broadcast();
+		// Subsystem에 동기화
+		SyncRolesToSubsystem();
 	}
 }
 
@@ -94,6 +97,8 @@ void ALobbyGameState::AddPlayer(const FString& PlayerNetId, const FString& Playe
 
 	// 서버에서도 이벤트 브로드캐스트
 	OnPlayerRolesChanged.Broadcast();
+	// Subsystem에 동기화
+	SyncRolesToSubsystem();
 }
 
 void ALobbyGameState::RemovePlayer(const FString& PlayerNetId)
@@ -115,18 +120,15 @@ void ALobbyGameState::RemovePlayer(const FString& PlayerNetId)
 
 	if (RemovedIndex != -1)
 	{
+		// 역할은 유지한 채로 플레이어만 제거 (레벨 전환 중 역할 재할당 방지)
 		PlayerRoles.RemoveAt(RemovedIndex);
 
-		// 역할 재할당 (남은 플레이어들에게 0부터 순서대로)
-		for (int32 i = 0; i < PlayerRoles.Num(); ++i)
-		{
-			PlayerRoles[i].Role = i;
-		}
-
 		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Green,
-			FString::Printf(TEXT("Player removed. Remaining players: %d"), PlayerRoles.Num()));
+			FString::Printf(TEXT("Player removed (role preserved). Remaining players: %d"), PlayerRoles.Num()));
 
 		OnPlayerRolesChanged.Broadcast();
+		// Subsystem에는 이미 역할이 저장되어 있으므로 동기화 불필요
+		// (제거된 플레이어의 역할은 Subsystem에 그대로 유지됨)
 	}
 	else
 	{
@@ -157,6 +159,8 @@ void ALobbyGameState::SwapPlayerRoles()
 
 	// 서버에서도 이벤트 브로드캐스트
 	OnPlayerRolesChanged.Broadcast();
+	// Subsystem에 동기화
+	SyncRolesToSubsystem();
 }
 
 int32 ALobbyGameState::GetPlayerRole(const FString& PlayerNetId) const
@@ -172,4 +176,26 @@ int32 ALobbyGameState::GetPlayerRole(const FString& PlayerNetId) const
 
 	// 찾지 못한 경우 -1 반환
 	return -1;
+}
+
+void ALobbyGameState::SyncRolesToSubsystem()
+{
+	// 서버에서만 실행
+	if (!HasAuthority()) return;
+
+	// GameInstance에서 MultiSessionSubsystem 가져오기
+	UGameInstance* GameInstance = GetGameInstance();
+	if (!GameInstance) return;
+
+	UMultiSessionSubsystem* SessionSubsystem = GameInstance->GetSubsystem<UMultiSessionSubsystem>();
+	if (!SessionSubsystem) return;
+
+	// 모든 플레이어 역할을 Subsystem에 동기화
+	for (const FPlayerRoleInfo& Info : PlayerRoles)
+	{
+		SessionSubsystem->SetPlayerRole(Info.PlayerNetId, Info.Role);
+	}
+
+	GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Magenta,
+		FString::Printf(TEXT("Synced %d player roles to Subsystem"), PlayerRoles.Num()));
 }

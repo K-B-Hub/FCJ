@@ -501,12 +501,16 @@ void AMultiPlayerController::ResumeGame()
 void AMultiPlayerController::ReturnToMainMenu()
 {
 	UE_LOG(LogTemp, Warning, TEXT("ReturnToMainMenu called"));
-	
+
 	// Don't need to resume game in multiplayer - game was never paused
 	// UGameplayStatics::SetGamePaused(GetWorld(), false);
 	UMultiSessionSubsystem* Server = GetGameInstance()->GetSubsystem<UMultiSessionSubsystem>();
 	if (Server)
 	{
+		// 레벨 전환 전에 즉시 bInServer를 false로 설정 (타이밍 문제 방지)
+		Server->bInServer = false;
+
+		// 클라이언트들 추방 및 세션 파괴
 		Server->DestroyServer();
 	}
 	// Load main menu level
@@ -519,10 +523,39 @@ void AMultiPlayerController::ExitGame()
 	UMultiSessionSubsystem* Server = GetGameInstance()->GetSubsystem<UMultiSessionSubsystem>();
 	if (Server)
 	{
+		// 게임 종료 전에 즉시 bInServer를 false로 설정 (세션 정리)
+		Server->bInServer = false;
+
+		// 클라이언트들 추방 및 세션 파괴
 		Server->DestroyServer();
 	}
 	// Exit the game
 	UKismetSystemLibrary::QuitGame(GetWorld(), this, EQuitPreference::Quit, false);
+}
+
+void AMultiPlayerController::ClientReturnToMainMenu_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("MultiPlayerController::ClientReturnToMainMenu - Client kicked from game"));
+
+	// 세션 정보 정리
+	UGameInstance* GameInstance = GetGameInstance();
+	if (GameInstance)
+	{
+		UMultiSessionSubsystem* SessionSubsystem = GameInstance->GetSubsystem<UMultiSessionSubsystem>();
+		if (SessionSubsystem)
+		{
+			// 레벨 전환 전에 즉시 bInServer를 false로 설정 (타이밍 문제 방지)
+			SessionSubsystem->bInServer = false;
+
+			// 세션 정리 (비동기로 처리됨)
+			SessionSubsystem->LeaveSession();
+
+			GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Yellow, TEXT("Client session cleared, returning to main menu"));
+		}
+	}
+
+	// 메인 메뉴로 복귀
+	UGameplayStatics::OpenLevel(this, FName("MainMenu"));
 }
 
 
