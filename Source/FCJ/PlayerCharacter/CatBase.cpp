@@ -169,14 +169,18 @@ AWallJumpObject* ACatBase::FindNearestWallJumpObject() const
 	AWallJumpObject* NearestWall = nullptr;
 	float MinDistance = WallJumpDetectionRadius;
 
+	FVector PlayerLocation = GetActorLocation();
+
 	for (AActor* Actor : WallJumpObjects)
 	{
 		if (AWallJumpObject* WallObject = Cast<AWallJumpObject>(Actor))
 		{
-			float Distance = FVector::Dist(GetActorLocation(), WallObject->GetActorLocation());
+			// Use surface distance instead of center-to-center distance
+			float Distance = WallObject->GetDistanceToSurface(PlayerLocation);
+
 			if (Distance <= WallJumpDetectionRadius && Distance < MinDistance)
 			{
-				if (WallObject->CanWallJump(GetActorLocation()))
+				if (WallObject->CanWallJump(PlayerLocation))
 				{
 					MinDistance = Distance;
 					NearestWall = WallObject;
@@ -227,8 +231,11 @@ void ACatBase::PerformWallJump()
 		return;
 	}
 
-	// Get jump direction from wall
-	FVector JumpDirection = NearestWall->GetWallJumpDirection(GetActorLocation());
+	// Get character's current velocity to preserve momentum
+	FVector CurrentVelocity = GetCharacterMovement()->Velocity;
+
+	// Get jump direction from wall (now includes velocity for natural movement)
+	FVector JumpDirection = NearestWall->GetWallJumpDirection(GetActorLocation(), CurrentVelocity);
 
 	// Call server RPC to perform wall jump
 	ServerPerformWallJump(JumpDirection);

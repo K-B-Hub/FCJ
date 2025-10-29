@@ -12,10 +12,12 @@
 #include "GameMode/LobbyGameState.h"
 #include "Subsystem/MultiSessionSubsystem.h"
 #include "PlayerController/MainMenuController.h"
+#include "GameInstance/FCJGameInstance.h"
 #include "OnlineSubsystem.h"
 #include "Interfaces/OnlineIdentityInterface.h"
 #include "Kismet/GameplayStatics.h"
 #include "HAL/PlatformApplicationMisc.h"
+#include "TimerManager.h"
 
 void ULobbyWidget::NativeConstruct()
 {
@@ -122,7 +124,38 @@ void ULobbyWidget::OnStartGameClicked()
 		UWorld* World = GetWorld();
 		if (World)
 		{
-			World->ServerTravel("/Game/Levels/Test?listen");
+			// 서버(호스트) - GameInstance를 통해 로딩 위젯 표시 (레벨 전환 중에도 유지됨)
+			UGameInstance* GameInstance = GetGameInstance();
+			if (GameInstance)
+			{
+				UFCJGameInstance* FCJGameInstance = Cast<UFCJGameInstance>(GameInstance);
+				if (FCJGameInstance)
+				{
+					FCJGameInstance->ShowLevelLoadingWidget();
+				}
+			}
+
+			// 클라이언트에게 로딩 위젯 표시 지시 (Client RPC)
+			for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+			{
+				APlayerController* PlayerController = It->Get();
+				if (PlayerController && !PlayerController->IsLocalController())
+				{
+					// 원격 클라이언트에게만 RPC 전송
+					AMainMenuController* MainMenuPC = Cast<AMainMenuController>(PlayerController);
+					if (MainMenuPC)
+					{
+						MainMenuPC->ClientShowLevelLoadingWidget();
+					}
+				}
+			}
+
+			// 약간의 딜레이 후 ServerTravel (위젯이 화면에 렌더링될 시간 확보)
+			FTimerHandle TravelTimerHandle;
+			World->GetTimerManager().SetTimer(TravelTimerHandle, [World]()
+			{
+				World->ServerTravel("/Game/Levels/Test?listen");
+			}, 0.1f, false);
 		}
 	}
 }

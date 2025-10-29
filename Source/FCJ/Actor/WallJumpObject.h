@@ -34,6 +34,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wall Jump")
 	float DetectionDistance;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wall Jump", meta = (ClampMin = "0.0", ClampMax = "1.0", ToolTip = "캐릭터 이동 방향의 가중치 (0 = 벽 법선만 사용, 1 = 이동 방향만 사용, 0.5 = 균형)"))
+	float VelocityWeight;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wall Jump", meta = (ClampMin = "0.0", ClampMax = "1.0", ToolTip = "벽면 법선 방향의 가중치 (0 = 이동 방향만 사용, 1 = 벽 법선만 사용, 0.5 = 균형)"))
+	float WallNormalWeight;
+
 	// Parkour/Climbing Settings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parkour", meta = (ToolTip = "이 오브젝트에서 파쿠르(클라이밍)가 가능한지 설정"))
 	bool bCanParkour = true;
@@ -51,10 +57,13 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	UFUNCTION(BlueprintCallable, Category = "Wall Jump")
-	FVector GetWallJumpDirection(const FVector& PlayerLocation) const;
+	FVector GetWallJumpDirection(const FVector& PlayerLocation, const FVector& CharacterVelocity) const;
 
 	UFUNCTION(BlueprintCallable, Category = "Wall Jump")
 	bool CanWallJump(const FVector& PlayerLocation) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Wall Jump")
+	float GetDistanceToSurface(const FVector& Point) const;
 
 	UFUNCTION(BlueprintCallable, Category = "Wall Jump")
 	FVector GetWallNormal(const FVector& PlayerLocation) const;
@@ -63,12 +72,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Parkour")
 	bool CanParkour(const FVector& CharacterLocation) const;
 
-	UFUNCTION(BlueprintCallable, Category = "Parkour")
-	FVector GetParkourStartLocation() const;
-
-	UFUNCTION(BlueprintCallable, Category = "Parkour")
-	FVector GetParkourTargetLocation() const;
-
-	UFUNCTION(BlueprintCallable, Category = "Parkour")
-	FVector GetParkourDirection() const;
+	// UFUNCTION(BlueprintCallable, Category = "Parkour")
+	// FVector GetParkourStartLocation() const;
+	//
+	// UFUNCTION(BlueprintCallable, Category = "Parkour")
+	// FVector GetParkourTargetLocation() const;
+	//
+	// UFUNCTION(BlueprintCallable, Category = "Parkour")
+	// FVector GetParkourDirection() const;
 };

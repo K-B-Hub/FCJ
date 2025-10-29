@@ -28,15 +28,20 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Widget")
 	TSubclassOf<class ULobbyWidget> LobbyWidgetClass;
 
-	UPROPERTY()
-	class UMainMenuWidget* MainMenuWidget;
+	UPROPERTY(EditDefaultsOnly, Category = "Widget")
+	TSubclassOf<class ULoadingWidget> LoadingWidgetClass;
 
 	UPROPERTY()
-	class UMultiSessionWidget* MultiSessionWidget;
+	UMainMenuWidget* MainMenuWidget;
 
 	UPROPERTY()
-	class ULobbyWidget* LobbyWidget;
+	UMultiSessionWidget* MultiSessionWidget;
 
+	UPROPERTY()
+	ULobbyWidget* LobbyWidget;
+
+	UPROPERTY()
+	ULoadingWidget* LoadingWidget;
 public:
 	UFUNCTION()
 	void ShowMultiSessionWidget();
@@ -47,6 +52,18 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ShowLobbyWidget(const FString& SessionId);
 
+	UFUNCTION()
+	void ShowSessionLoadingWidget();
+
+	UFUNCTION()
+	void ShowSessionFailWidget();
+
+	UFUNCTION()
+	void ShowLevelLoadingWidget();
+
+	UFUNCTION()
+	void HideLoadingWidget();
+	
 	// 클라이언트 RPC - 로비 위젯 표시
 	UFUNCTION(Client, Reliable)
 	void ClientShowLobbyWidget();
@@ -55,6 +72,8 @@ public:
 	UFUNCTION(Client, Reliable)
 	void ClientReturnToMainMenu();
 
+	UFUNCTION(Client, Reliable)
+	void ClientShowLevelLoadingWidget();
 private:
 	// 헬퍼 함수: 모든 위젯 숨기기
 	void HideAllWidgets();

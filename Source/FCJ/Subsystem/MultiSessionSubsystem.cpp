@@ -94,6 +94,17 @@ void UMultiSessionSubsystem::FindServers(FString SessionId)
 		return;
 	}
 
+	// 로딩 위젯 표시
+	UWorld* World = GetWorld();
+	if (World)
+	{
+		APlayerController* PC = World->GetFirstPlayerController();
+		if (AMainMenuController* MainMenuPC = Cast<AMainMenuController>(PC))
+		{
+			MainMenuPC->ShowSessionLoadingWidget();
+		}
+	}
+
 	// 타겟 세션 ID 저장
 	TargetSessionId = SessionId;
 
@@ -252,6 +263,17 @@ void UMultiSessionSubsystem::OnFindSessionsComplete(bool bWasSuccessful)
 	if (!bWasSuccessful || !sessionSearch.IsValid())
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Session search failed"));
+
+		// 세션 찾기 실패 위젯 표시
+		UWorld* World = GetWorld();
+		if (World)
+		{
+			APlayerController* PC = World->GetFirstPlayerController();
+			if (AMainMenuController* MainMenuPC = Cast<AMainMenuController>(PC))
+			{
+				MainMenuPC->ShowSessionFailWidget();
+			}
+		}
 		return;
 	}
 
@@ -294,6 +316,17 @@ void UMultiSessionSubsystem::OnFindSessionsComplete(bool bWasSuccessful)
 	if (!bFoundTargetSession)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Target session not found"));
+
+		// 타겟 세션을 찾지 못한 경우 실패 위젯 표시
+		UWorld* World = GetWorld();
+		if (World)
+		{
+			APlayerController* PC = World->GetFirstPlayerController();
+			if (AMainMenuController* MainMenuPC = Cast<AMainMenuController>(PC))
+			{
+				MainMenuPC->ShowSessionFailWidget();
+			}
+		}
 	}
 }
 
@@ -327,6 +360,17 @@ void UMultiSessionSubsystem::OnJoinSessionComplete(FName SessionName, EOnJoinSes
 	else
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Failed to join session"));
+
+		// 세션 참가 실패 위젯 표시
+		UWorld* World = GetWorld();
+		if (World)
+		{
+			APlayerController* PC = World->GetFirstPlayerController();
+			if (AMainMenuController* MainMenuPC = Cast<AMainMenuController>(PC))
+			{
+				MainMenuPC->ShowSessionFailWidget();
+			}
+		}
 	}
 }
 

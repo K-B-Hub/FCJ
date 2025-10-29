@@ -15,6 +15,7 @@
 #include "Widdget/ESCWidget.h"
 #include "InputModifiers.h"
 #include "Subsystem/MultiSessionSubsystem.h"
+#include "GameInstance/FCJGameInstance.h"
 #include "Kismet/KismetSystemLibrary.h"
 
 // Define static member
@@ -94,6 +95,15 @@ void AMultiPlayerController::BeginPlay()
 	else
 	{
 		UE_LOG(LogTemp, Error, TEXT("ESCWidgetClass is not set! Please assign it in Blueprint."));
+	}
+
+	// 스트리밍 완료 체크 시작 (모든 리소스가 로드되면 로딩 위젯 숨김)
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UFCJGameInstance* FCJGameInstance = Cast<UFCJGameInstance>(GameInstance))
+		{
+			FCJGameInstance->StartCheckingStreamingCompletion();
+		}
 	}
 }
 
@@ -247,7 +257,7 @@ void AMultiPlayerController::Jump()
 {
 	if (APawn* ControlledPawn = GetPawn())
 	{
-		if (ACharacter* character = Cast<ACharacter>(ControlledPawn))
+		if (ACatBase* character = Cast<ACatBase>(ControlledPawn))
 		{
 			character->Jump();
 		}

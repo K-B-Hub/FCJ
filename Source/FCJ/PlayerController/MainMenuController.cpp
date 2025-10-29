@@ -3,9 +3,11 @@
 
 #include "MainMenuController.h"
 #include "Subsystem/MultiSessionSubsystem.h"
+#include "GameInstance/FCJGameInstance.h"
 #include "FCJ/Widdget/MainMenuWidget.h"
 #include "FCJ/Widdget/MultiSessionWidget.h"
 #include "FCJ/Widdget/LobbyWidget.h"
+#include "FCJ/Widdget/LoadingWidget.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -107,6 +109,50 @@ void AMainMenuController::ShowLobbyWidget(const FString& SessionId)
 	}
 }
 
+void AMainMenuController::ShowSessionLoadingWidget()
+{
+	ULoadingWidget* Widget = GetOrCreateWidget(LoadingWidgetClass, LoadingWidget);
+	if (Widget)
+	{
+		Widget->RemoveFromParent();
+		Widget->AddToViewport(1000);
+		Widget->SetVisibility(ESlateVisibility::Visible);
+		Widget->ShowSessionLoad();
+	}
+}
+
+void AMainMenuController::ShowSessionFailWidget()
+{
+	ULoadingWidget* Widget = GetOrCreateWidget(LoadingWidgetClass, LoadingWidget);
+	if (Widget)
+	{
+		Widget->RemoveFromParent();
+		Widget->AddToViewport(1000);
+		Widget->SetVisibility(ESlateVisibility::Visible);
+		Widget->ShowSessionFail();
+	}
+}
+
+void AMainMenuController::ShowLevelLoadingWidget()
+{
+	ULoadingWidget* Widget = GetOrCreateWidget(LoadingWidgetClass, LoadingWidget);
+	if (Widget)
+	{
+		Widget->RemoveFromParent();
+		Widget->AddToViewport(1000);
+		Widget->SetVisibility(ESlateVisibility::Visible);
+		Widget->ShowLevelLoad();
+	}
+}
+
+void AMainMenuController::HideLoadingWidget()
+{
+	if (LoadingWidget)
+	{
+		LoadingWidget->RemoveFromParent();
+	}
+}
+
 void AMainMenuController::ClientShowLobbyWidget_Implementation()
 {
 	UMultiSessionSubsystem* SessionSubsystem = GetGameInstance()->GetSubsystem<UMultiSessionSubsystem>();
@@ -142,6 +188,18 @@ void AMainMenuController::ClientReturnToMainMenu_Implementation()
 	UGameplayStatics::OpenLevel(this, FName("MainMenu"));
 }
 
+void AMainMenuController::ClientShowLevelLoadingWidget_Implementation()
+{
+	// GameInstance를 통해 레벨 전환 간에도 유지되는 위젯 표시
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UFCJGameInstance* FCJGameInstance = Cast<UFCJGameInstance>(GameInstance))
+		{
+			FCJGameInstance->ShowLevelLoadingWidget();
+		}
+	}
+}
+
 // ========== 헬퍼 함수 ==========
 
 void AMainMenuController::HideAllWidgets()
@@ -157,6 +215,10 @@ void AMainMenuController::HideAllWidgets()
 	if (LobbyWidget)
 	{
 		LobbyWidget->SetVisibility(ESlateVisibility::Hidden);
+	}
+	if (LoadingWidget)
+	{
+		LoadingWidget->SetVisibility(ESlateVisibility::Hidden);
 	}
 }
 
