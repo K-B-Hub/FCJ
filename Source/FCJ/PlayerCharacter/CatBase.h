@@ -117,9 +117,10 @@ private:
 	bool bCanWallJump = true;
 
 	// Parkour variables (replicated for network sync)
+	UPROPERTY()
+	bool bTryingToParkour = false;
 	UPROPERTY(Replicated)
 	bool bIsPerformingParkour = false;
-
 	UPROPERTY(Replicated)
 	AActor* CurrentParkourActor = nullptr;
 
@@ -157,6 +158,8 @@ public:
 
 	// Override Jump to include wall jump and climbing
 	virtual void Jump() override;
+
+	virtual void StopJumping() override;
 
 	// Parkour functions
 	UFUNCTION(BlueprintCallable, Category = "Parkour")
@@ -227,7 +230,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Special Actions")
 	virtual void PerformSpecialAction() { OnSpecialAction(); }
 
-
+	
 private:
 	// Apply Blueprint settings to components
 	void ApplyBlueprintSettings();

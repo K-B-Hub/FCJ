@@ -14,6 +14,7 @@
 #include "Widdget/SettingsWidget.h"
 #include "Widdget/ESCWidget.h"
 #include "InputModifiers.h"
+#include "../PlayerCharacter/BiteCat.h"
 #include "Subsystem/MultiSessionSubsystem.h"
 #include "GameInstance/FCJGameInstance.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -159,6 +160,7 @@ void AMultiPlayerController::SetupInputComponent()
 		if (SpecialAction)
 		{
 			EnhancedInputComponent->BindAction(SpecialAction, ETriggerEvent::Started, this, &AMultiPlayerController::PerformSpecialAction);
+			EnhancedInputComponent->BindAction(SpecialAction, ETriggerEvent::Completed, this, &AMultiPlayerController::OnSpecialActionReleased);
 		}
 
 		// Zoom
@@ -179,7 +181,6 @@ void AMultiPlayerController::SetupInputComponent()
 		}
 	}
 }
-
 
 // Individual movement functions
 void AMultiPlayerController::MoveForward(const FInputActionValue& Value)
@@ -210,26 +211,28 @@ void AMultiPlayerController::ApplyCombinedMovement()
 {
 	if (APawn* ControlledPawn = GetPawn())
 	{
-		if (ACharacter* character = Cast<ACharacter>(ControlledPawn))
+		if (ACatBase* character = Cast<ACatBase>(ControlledPawn))
 		{
-			// Use camera/controller rotation for movement direction
-			const FRotator Rotation = GetControlRotation();
-			const FRotator YawRotation(0, Rotation.Yaw, 0);
+			if (!character->IsPerformingParkour())
+			{
+				// Use camera/controller rotation for movement direction
+				const FRotator Rotation = GetControlRotation();
+				const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-			// Get forward vector
-			const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+				// Get forward vector
+				const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
 			
-			// Get right vector 
-			const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+				// Get right vector 
+				const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
-			// Calculate net movement values
-			float NetForwardInput = ForwardInputValue - BackwardInputValue;
-			float NetRightInput = RightInputValue - LeftInputValue;
+				// Calculate net movement values
+				float NetForwardInput = ForwardInputValue - BackwardInputValue;
+				float NetRightInput = RightInputValue - LeftInputValue;
 
-			// Apply combined movement
-			character->AddMovementInput(ForwardDirection, NetForwardInput);
-			character->AddMovementInput(RightDirection, NetRightInput);
-			
+				// Apply combined movement
+				character->AddMovementInput(ForwardDirection, NetForwardInput);
+				character->AddMovementInput(RightDirection, NetRightInput);
+			}
 		}
 	}
 }
@@ -268,7 +271,7 @@ void AMultiPlayerController::StopJumping()
 {
 	if (APawn* ControlledPawn = GetPawn())
 	{
-		if (ACharacter* character = Cast<ACharacter>(ControlledPawn))
+		if (ACatBase* character = Cast<ACatBase>(ControlledPawn))
 		{
 			character->StopJumping();
 		}
@@ -282,6 +285,18 @@ void AMultiPlayerController::PerformSpecialAction()
 		if (ACatBase* CatCharacter = Cast<ACatBase>(ControlledPawn))
 		{
 			CatCharacter->PerformSpecialAction();
+		}
+	}
+}
+
+void AMultiPlayerController::OnSpecialActionReleased()
+{
+	if (APawn* ControlledPawn = GetPawn())
+	{
+		if (ABiteCat* CatCharacter = Cast<ABiteCat>(ControlledPawn))
+		{
+			// BiteCat의 충전 던지기 해제
+			CatCharacter->ReleaseThrow();
 		}
 	}
 }
@@ -462,7 +477,6 @@ void AMultiPlayerController::OpenESCMenu()
 	}
 }
 
-
 void AMultiPlayerController::ShowESCMenu()
 {
 	UE_LOG(LogTemp, Warning, TEXT("ShowESCMenu called"));
@@ -567,5 +581,3 @@ void AMultiPlayerController::ClientReturnToMainMenu_Implementation()
 	// 메인 메뉴로 복귀
 	UGameplayStatics::OpenLevel(this, FName("MainMenu"));
 }
-
-

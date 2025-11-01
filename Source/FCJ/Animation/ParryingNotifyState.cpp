@@ -17,6 +17,9 @@ void UParryingNotifyState::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSe
 	if (AAttackCat* AttackCat = Cast<AAttackCat>(MeshComp->GetOwner()))
 	{
 		AttackCat->StartParrying();
+
+		// 패링 시작 시 주변 물체 밀치기
+		AttackCat->PushNearbyObjects();
 	}
 }
 

@@ -87,6 +87,7 @@ protected:
 	void Jump();
 	void StopJumping();
 	void PerformSpecialAction();
+	void OnSpecialActionReleased();
 	void Zoom(const FInputActionValue& Value);
 	void OpenESCMenu();
 

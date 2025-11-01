@@ -2,6 +2,7 @@
 
 #include "PlayerCharacter/AttackCat.h"
 #include "Actor/Projectile.h"
+#include "Actor/HoldingObject.h"
 #include "Components/BoxComponent.h"
 #include "Animation/AnimMontage.h"
 #include "Engine/World.h"
@@ -9,7 +10,7 @@
 
 AAttackCat::AAttackCat()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	
 }
 
 void AAttackCat::BeginPlay()
@@ -112,5 +113,60 @@ void AAttackCat::ReflectProjectile(AProjectile* Projectile)
 	
 	// Also update the projectile's forward direction
 	Projectile->SetActorRotation(ReflectedVelocity.Rotation());
+}
+
+void AAttackCat::PushNearbyObjects()
+{
+	// 서버에 밀치기 요청
+	ServerPushNearbyObjects();
+}
+
+void AAttackCat::ServerPushNearbyObjects_Implementation()
+{
+	if (!SpecialActionBox)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AttackCat: SpecialActionBox is null"));
+		return;
+	}
+
+	// SpecialActionBox와 오버랩된 HoldingObject들 가져오기
+	TArray<AActor*> OverlappingActors;
+	SpecialActionBox->GetOverlappingActors(OverlappingActors, AHoldingObject::StaticClass());
+
+	if (OverlappingActors.Num() == 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AttackCat: No HoldingObjects in range"));
+		return;
+	}
+
+	// 캐릭터의 전방 방향 계산
+	FVector ForwardDirection = GetActorForwardVector();
+
+	// 약간의 위쪽 각도 추가 (물체가 날아가는 효과)
+	FVector PushDirection = ForwardDirection + FVector(0.0f, 0.0f, 0.2f);
+	PushDirection.Normalize();
+
+	// 각 HoldingObject에 힘 가하기
+	for (AActor* Actor : OverlappingActors)
+	{
+		if (AHoldingObject* HoldingObject = Cast<AHoldingObject>(Actor))
+		{
+			// CollisionComponent 찾기
+			if (UBoxComponent* CollisionComp = HoldingObject->FindComponentByClass<UBoxComponent>())
+			{
+				// 물리 시뮬레이션 확인 및 활성화
+				if (!CollisionComp->IsSimulatingPhysics())
+				{
+					CollisionComp->SetSimulatePhysics(true);
+				}
+
+				// 임펄스로 밀어내기
+				FVector PushImpulse = PushDirection * PushForce * CollisionComp->GetMass();
+				CollisionComp->AddImpulse(PushImpulse);
+
+				UE_LOG(LogTemp, Warning, TEXT("AttackCat: Pushed object %s with force %.2f"), *HoldingObject->GetName(), PushForce);
+			}
+		}
+	}
 }
 

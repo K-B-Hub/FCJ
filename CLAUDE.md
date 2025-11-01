@@ -52,26 +52,33 @@ The project implements a modular dual-cat cooperative system designed for platfo
    - Base framework for character-specific abilities and cooperative interactions
 
 2. **Specialized Cat Characters**: Each cat type brings unique abilities to cooperative gameplay
-   - **AAttackCat**: Combat and obstacle-clearing specialist
-     - Currently minimal implementation inheriting base abilities
-     - Framework ready for combat-specific features and abilities
-     - Special action system available for future combat mechanics
-   
-   - **ABiteCat**: Object manipulation and holding specialist  
+   - **AAttackCat**: Combat and parrying specialist
+     - Parrying system with animation-driven mechanics via ParryingNotifyState
+     - Projectile reflection during parry windows (reverses projectile velocity)
+     - Object pushing system: parry pushes nearby HoldingObjects in forward direction
+     - Server-authoritative physics with configurable PushForce (default: 1500.0f)
+     - SpecialAction triggers parry animation montage
+
+   - **ABiteCat**: Object manipulation and throwing specialist
      - Advanced object interaction through holding/grabbing mechanics
-     - Can pick up and carry objects with configurable weight limits (`MaxHoldWeight`)
+     - Charge-based throwing system with hold-to-charge input
+     - Configurable force range (MinThrowForce: 50.0f, MaxThrowForce: 1200.0f)
+     - Auto-release at max charge time (default: 1.0s)
+     - Server-replicated charge state for networked gameplay
      - Detects and interacts with `AHoldingObject` instances in the world
-     - Object positioning with configurable hold offsets for realistic carrying
 
 3. **Cooperative Gameplay Controller (AMultiPlayerController)**
    - Individual directional input actions (MoveForward, MoveBackward, MoveLeft, MoveRight)
-   - Combined movement system for precise platformer control
+   - Combined movement system for precise platformer control with parkour lock
    - Configurable camera controls with mouse sensitivity and Y-axis inversion
    - Dynamic zoom system with configurable speed and distance limits
    - Key remapping and settings persistence system
    - Input Mapping Context with Enhanced Input system integration
    - ESC menu system with proper input mode management for multiplayer
    - Display settings persistence across level transitions
+   - **SpecialAction Input Handling**:
+     - ETriggerEvent::Started → PerformSpecialAction() (grab object or start charge/parry)
+     - ETriggerEvent::Completed → OnSpecialActionReleased() (BiteCat charge release)
 
 4. **Cooperative Game Mode (AMultiGameMode)**
    - Blueprint-configurable player controller and pawn classes
@@ -203,19 +210,25 @@ Source/FCJ/
 - Special action inputs designed for timing-critical cooperative maneuvers
 
 ### Specialized Ability System
-- **AttackCat Framework**: Ready for combat implementation with special action system
-  - Inherits all base platforming capabilities including wall jumping
-  - Special action box configured for future combat/attack mechanics
-  - Framework established for barrier destruction and combat features
+- **AttackCat Parrying System**: Animation-driven combat mechanics
+  - ParryingNotifyState triggers both projectile reflection and object pushing
+  - Timer-based projectile detection (0.01s intervals) during parry window
+  - SpecialActionBox overlap detection for both projectiles and HoldingObjects
+  - Server RPC pattern: `PushNearbyObjects()` → `ServerPushNearbyObjects_Implementation()`
+  - Disables homing on parried projectiles and reverses velocity
+  - Physics-based object pushing with mass consideration
 
-- **BiteCat Object Interaction**: Advanced holding and manipulation system  
-  - Object detection and weight-based interaction system
-  - Hold/release mechanics with proper physics integration
-  - Configurable object positioning and carrying mechanics
-  - Integration with AHoldingObject actors for puzzle elements
+- **BiteCat Charge Throwing System**: Hold-to-charge mechanic
+  - Client initiates: `StartCharging()` → `ServerStartCharging_Implementation()`
+  - Server updates charge time in Tick() with `HasAuthority()` check
+  - Replicated state (bIsCharging, CurrentChargeTime) syncs to all clients
+  - Release: `ReleaseThrow()` → `ServerReleaseThrow_Implementation(float ChargeTime)`
+  - Linear interpolation: `FMath::Lerp(MinThrowForce, MaxThrowForce, ChargeRatio)`
+  - Auto-release triggers at MaxChargeTime for maximum force throw
 
 - **Base Class Extensibility**: Virtual special action system supports new cat types
 - **Blueprint Integration**: OnSpecialAction() event for complex cooperative mechanics
+- **AnimNotify Pattern**: ParryingNotifyState demonstrates animation-driven gameplay events
 
 ### Cooperative Game Flow
 - Level design supports dual-character progression (one cat opens path for other)
@@ -237,16 +250,26 @@ The project implements comprehensive multiplayer networking designed for both li
 
 ### Key Networked Systems
 
-#### BiteCat Object Holding System
+#### BiteCat Charge Throwing System
 ```cpp
-// Server-authoritative object interaction
-UFUNCTION(Server, Reliable, Category = "Holding")
-void ServerHoldObject(AHoldingObject* Object);
+// Server-authoritative charge throwing
+UFUNCTION(Server, Reliable, Category = "Charge")
+void ServerStartCharging();
+
+UFUNCTION(Server, Reliable, Category = "Charge")
+void ServerReleaseThrow(float ChargeTime);
 
 // Replicated state for all clients
-UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated, Category = "Holding")
-AHoldingObject* CurrentHeldObject;
+UPROPERTY(Replicated) bool bIsCharging;
+UPROPERTY(Replicated) float CurrentChargeTime;
+UPROPERTY(Replicated) AHoldingObject* CurrentHeldObject;
 ```
+
+**Implementation Pattern**:
+- Tick() updates CurrentChargeTime only on server (`HasAuthority()`)
+- Client sends current charge time to server on release
+- Server calculates force and applies physics impulse
+- Physics replication handles visual sync across clients
 
 #### Character Movement Networking Patterns
 - **Wall Jump System**: Server-authoritative physics with client visual feedback
@@ -284,6 +307,20 @@ AHoldingObject* CurrentHeldObject;
 - Server-controlled activation and projectile spawning with replicated state
 - Player detection and targeting replicated across all clients
 - Configurable spawn patterns with networked synchronization
+
+#### AttackCat Parrying System
+```cpp
+// Server-authoritative object pushing
+UFUNCTION(Server, Reliable, Category = "Attack")
+void ServerPushNearbyObjects();
+```
+
+**Implementation Pattern**:
+- ParryingNotifyState::NotifyBegin() triggers PushNearbyObjects()
+- Client calls → Server RPC applies physics impulses
+- SpecialActionBox finds all overlapping HoldingObjects
+- Server applies directional impulse with configurable PushForce
+- Physics simulation replicates results to all clients
 
 ### Online Session Management (Steam)
 

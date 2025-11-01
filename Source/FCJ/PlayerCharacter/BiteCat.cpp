@@ -11,6 +11,8 @@
 ABiteCat::ABiteCat()
 {
 	CurrentHeldObject = nullptr;
+	bIsCharging = false;
+	CurrentChargeTime = 0.0f;
 }
 
 void ABiteCat::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -18,25 +20,27 @@ void ABiteCat::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetime
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABiteCat, CurrentHeldObject);
+	DOREPLIFETIME(ABiteCat, bIsCharging);
+	DOREPLIFETIME(ABiteCat, CurrentChargeTime);
 }
 
 void ABiteCat::PerformSpecialAction()
 {
 	UE_LOG(LogTemp, Warning, TEXT("BiteCat PerformSpecialAction called"));
 
-	// BiteCat의 특수 행동: 잡기/던지기
+	// BiteCat의 특수 행동: 잡기 or 충전 시작
 	if (IsHoldingObject())
 	{
-		// 현재 오브젝트를 들고 있다면 던지기
-		UE_LOG(LogTemp, Warning, TEXT("Throwing held object"));
-		ThrowObject();
+		// 현재 오브젝트를 들고 있다면 충전 시작
+		UE_LOG(LogTemp, Warning, TEXT("Starting charge for throw"));
+		StartCharging();
 	}
 	else
 	{
 		// 오브젝트를 들고 있지 않다면 가장 가까운 오브젝트 잡기 시도
 		AHoldingObject* NearestObject = FindNearestHoldableObject();
 		UE_LOG(LogTemp, Warning, TEXT("Found nearest object: %s"), NearestObject ? *NearestObject->GetName() : TEXT("None"));
-		
+
 		if (NearestObject && CanHoldObject(NearestObject))
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Attempting to hold object"));
@@ -137,8 +141,7 @@ void ABiteCat::ServerHoldObject_Implementation(AHoldingObject* Object)
 	UE_LOG(LogTemp, Warning, TEXT("BiteCat grabbed object: %s"), *Object->GetName());
 }
 
-
-void ABiteCat::ThrowObject()
+/*void ABiteCat::ThrowObject()
 {
 	if (!CurrentHeldObject)
 	{
@@ -187,5 +190,132 @@ void ABiteCat::ServerThrowObject_Implementation()
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("BiteCat threw object in direction: %s"), *ThrowDirection.ToString());
+}*/
+
+void ABiteCat::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	// 서버에서만 충전 시간 업데이트
+	if (HasAuthority() && bIsCharging && IsHoldingObject())
+	{
+		CurrentChargeTime += DeltaTime;
+
+		// 최대 충전 시간 도달 시 자동 발사
+		if (CurrentChargeTime >= MaxChargeTime)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Max charge reached - Auto throwing"));
+			ServerReleaseThrow(CurrentChargeTime);
+		}
+	}
+}
+
+void ABiteCat::StartCharging()
+{
+	// 물체를 잡고 있을 때만 충전 가능
+	if (!IsHoldingObject())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Cannot charge - not holding an object"));
+		return;
+	}
+
+	// 서버에 충전 시작 요청
+	ServerStartCharging();
+}
+
+void ABiteCat::ServerStartCharging_Implementation()
+{
+	if (!IsHoldingObject())
+	{
+		return;
+	}
+
+	bIsCharging = true;
+	CurrentChargeTime = 0.0f;
+	UE_LOG(LogTemp, Warning, TEXT("Server: Started charging throw"));
+}
+
+void ABiteCat::ReleaseThrow()
+{
+	if (!IsHoldingObject())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Cannot throw - not holding an object"));
+		return;
+	}
+
+	if (!bIsCharging)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Cannot throw - not charging"));
+		return;
+	}
+
+	// 서버에 현재 충전 시간과 함께 던지기 요청
+	ServerReleaseThrow(CurrentChargeTime);
+}
+
+void ABiteCat::ServerReleaseThrow_Implementation(float ChargeTime)
+{
+	if (!CurrentHeldObject)
+	{
+		return;
+	}
+
+	if (!bIsCharging)
+	{
+		return;
+	}
+
+	// 충전 시간을 기반으로 던지기 힘 계산
+	float ChargeRatio = FMath::Clamp(ChargeTime / MaxChargeTime, 0.0f, 1.0f);
+	float CalculatedForce = FMath::Lerp(MinThrowForce, MaxThrowForce, ChargeRatio);
+
+	UE_LOG(LogTemp, Warning, TEXT("Server: Releasing throw with charge time: %.2f, force: %.2f"), ChargeTime, CalculatedForce);
+
+	// 캐릭터의 전방 방향 계산
+	FVector ForwardDirection = GetActorForwardVector();
+
+	// 던질 방향에 약간의 위쪽 각도 추가 (포물선 궤적을 위해)
+	FVector ThrowDirection = ForwardDirection + FVector(0.0f, 0.0f, 0.3f);
+	ThrowDirection.Normalize();
+
+	// 오브젝트를 놓기
+	AHoldingObject* ObjectToThrow = CurrentHeldObject;
+	CurrentHeldObject->OnReleased();
+	CurrentHeldObject = nullptr;
+
+	// 충전 상태 초기화
+	bIsCharging = false;
+	CurrentChargeTime = 0.0f;
+
+	// HoldingObject는 CollisionComponent에 물리가 설정되어 있으므로 CollisionComponent에 힘을 가함
+	if (UBoxComponent* CollisionComp = ObjectToThrow->FindComponentByClass<UBoxComponent>())
+	{
+		if (CollisionComp->IsSimulatingPhysics())
+		{
+			// 계산된 힘으로 임펄스 던지기
+			FVector ThrowImpulse = ThrowDirection * CalculatedForce * CollisionComp->GetMass();
+			CollisionComp->AddImpulse(ThrowImpulse);
+		}
+		else
+		{
+			// 물리 시뮬레이션이 비활성화되어 있다면 활성화하고 던지기
+			CollisionComp->SetSimulatePhysics(true);
+			FVector ThrowImpulse = ThrowDirection * CalculatedForce * CollisionComp->GetMass();
+			CollisionComp->AddImpulse(ThrowImpulse);
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Server: Threw object with calculated force: %.2f"), CalculatedForce);
+}
+
+float ABiteCat::CalculateThrowForce() const
+{
+	// 충전 시간을 0~1 범위로 정규화
+	float ChargeRatio = FMath::Clamp(CurrentChargeTime / MaxChargeTime, 0.0f, 1.0f);
+
+	// 최소 힘에서 최대 힘으로 선형 보간
+	float CalculatedForce = FMath::Lerp(MinThrowForce, MaxThrowForce, ChargeRatio);
+
+	return CalculatedForce;
 }
 

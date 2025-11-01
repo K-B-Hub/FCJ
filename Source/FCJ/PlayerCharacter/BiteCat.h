@@ -28,7 +28,25 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Holding Settings", meta = (ToolTip = "물체를 던질 때 가해지는 힘의 크기를 설정합니다"))
 	float ThrowForce = 1200.0f;
 
+	// 충전 시스템 변수
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Charge Settings", meta = (ToolTip = "최소 던지기 힘 (충전하지 않았을 때)"))
+	float MinThrowForce = 50.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Charge Settings", meta = (ToolTip = "최대 던지기 힘 (최대 충전 시)"))
+	float MaxThrowForce = 1200.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Charge Settings", meta = (ToolTip = "최대 충전 시간 (초)"))
+	float MaxChargeTime = 1.0f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated, Category = "Charge Settings", meta = (ToolTip = "현재 충전 중인지 여부"))
+	bool bIsCharging = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated, Category = "Charge Settings", meta = (ToolTip = "현재 충전 시간"))
+	float CurrentChargeTime = 0.0f;
+
 public:
+	// Tick override for charge system
+	virtual void Tick(float DeltaTime) override;
 	// PerformSpecialAction 오버라이드 (잡기 기능)
 	virtual void PerformSpecialAction() override;
 
@@ -43,8 +61,18 @@ public:
 	void HoldObject(AHoldingObject* Object);
 
 
-	UFUNCTION(BlueprintCallable, Category = "Holding")
-	void ThrowObject();
+	// UFUNCTION(BlueprintCallable, Category = "Holding")
+	// void ThrowObject();
+
+	// 충전 시스템 함수들
+	UFUNCTION(BlueprintCallable, Category = "Charge")
+	void StartCharging();
+
+	UFUNCTION(BlueprintCallable, Category = "Charge")
+	void ReleaseThrow();
+
+	UFUNCTION(BlueprintCallable, Category = "Charge")
+	float CalculateThrowForce() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Holding")
 	bool IsHoldingObject() const { return CurrentHeldObject != nullptr; }
@@ -56,6 +84,12 @@ public:
 	UFUNCTION(Server, Reliable, Category = "Holding")
 	void ServerHoldObject(AHoldingObject* Object);
 
-	UFUNCTION(Server, Reliable, Category = "Holding")
-	void ServerThrowObject();
+	// UFUNCTION(Server, Reliable, Category = "Holding")
+	// void ServerThrowObject();
+
+	UFUNCTION(Server, Reliable, Category = "Charge")
+	void ServerStartCharging();
+
+	UFUNCTION(Server, Reliable, Category = "Charge")
+	void ServerReleaseThrow(float ChargeTime);
 };
