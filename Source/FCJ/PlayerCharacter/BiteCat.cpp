@@ -287,21 +287,21 @@ void ABiteCat::ServerReleaseThrow_Implementation(float ChargeTime)
 	bIsCharging = false;
 	CurrentChargeTime = 0.0f;
 
-	// HoldingObject는 CollisionComponent에 물리가 설정되어 있으므로 CollisionComponent에 힘을 가함
-	if (UBoxComponent* CollisionComp = ObjectToThrow->FindComponentByClass<UBoxComponent>())
+	// HoldingObject는 MeshComponent에 물리가 설정되어 있으므로 MeshComponent에 힘을 가함
+	if (UStaticMeshComponent* MeshComp = ObjectToThrow->FindComponentByClass<UStaticMeshComponent>())
 	{
-		if (CollisionComp->IsSimulatingPhysics())
+		if (MeshComp->IsSimulatingPhysics())
 		{
 			// 계산된 힘으로 임펄스 던지기
-			FVector ThrowImpulse = ThrowDirection * CalculatedForce * CollisionComp->GetMass();
-			CollisionComp->AddImpulse(ThrowImpulse);
+			FVector ThrowImpulse = ThrowDirection * CalculatedForce * MeshComp->GetMass();
+			MeshComp->AddImpulse(ThrowImpulse);
 		}
 		else
 		{
 			// 물리 시뮬레이션이 비활성화되어 있다면 활성화하고 던지기
-			CollisionComp->SetSimulatePhysics(true);
-			FVector ThrowImpulse = ThrowDirection * CalculatedForce * CollisionComp->GetMass();
-			CollisionComp->AddImpulse(ThrowImpulse);
+			MeshComp->SetSimulatePhysics(true);
+			FVector ThrowImpulse = ThrowDirection * CalculatedForce * MeshComp->GetMass();
+			MeshComp->AddImpulse(ThrowImpulse);
 		}
 	}
 

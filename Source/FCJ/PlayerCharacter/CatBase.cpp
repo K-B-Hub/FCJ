@@ -486,6 +486,11 @@ void ACatBase::ServerPerformParkour_Implementation(AActor* ParkourTarget)
 		SetActorRotation(FRotator(0.0f, TargetRotation.Yaw, 0.0f));
 	}
 
+	// Attach character to parkour target to maintain relative position
+	// KeepWorld: 현재 월드 위치를 유지하면서 부모에 붙음
+	FAttachmentTransformRules AttachRules(EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, false);
+	AttachToActor(ParkourTarget, AttachRules);
+
 	// Change to Flying mode for Z-axis root motion
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
 
@@ -535,6 +540,10 @@ void ACatBase::OnParkourMontageCompleted()
 	{
 		return;
 	}
+
+	// Detach from parkour target
+	FDetachmentTransformRules DetachRules(EDetachmentRule::KeepWorld, false);
+	DetachFromActor(DetachRules);
 
 	// Reset parkour state (replicated)
 	bIsPerformingParkour = false;

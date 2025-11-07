@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Components/StaticMeshComponent.h"
-#include "Components/BoxComponent.h"
+#include "Components/SphereComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "HoldingObject.generated.h"
 
@@ -27,9 +27,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* MeshComponent;
 
-	// 충돌 컴포넌트
+	// 충돌 컴포넌트 (트리거 전용)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UBoxComponent* CollisionComponent;
+	USphereComponent* CollisionComponent;
 
 	// 잡혔는지 여부
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated, Category = "Holding")
@@ -47,9 +47,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Holding Settings", meta = (ToolTip = "잡혔을 때 BiteCat을 기준으로 한 상대 위치를 설정합니다"))
 	FVector HoldOffset = FVector(150.0f, 0.0f, 0.0f);
 
-	// 콜리전 박스 크기 설정
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collision Settings", meta = (ToolTip = "오브젝트의 콜리전 박스 크기를 설정합니다"))
-	FVector BoxExtent = FVector(50.0f, 50.0f, 50.0f);
+	// 콜리전 구체 반경 설정 (트리거 전용)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collision Settings", meta = (ToolTip = "오브젝트의 트리거 콜리전 구체 반경을 설정합니다"))
+	float SphereRadius = 50.0f;
 
 	// 물리 댐핑 설정 (낮게 설정하여 중력이 정상적으로 작동하도록)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics Settings", meta = (ToolTip = "오브젝트의 선형 댐핑값입니다. 높을수록 움직임이 안정적입니다"))

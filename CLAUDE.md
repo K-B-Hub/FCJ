@@ -91,11 +91,22 @@ The project implements a modular dual-cat cooperative system designed for platfo
      - Configurable wall jump forces (horizontal and vertical)
      - Detection distance for wall proximity
      - Wall normal calculation for realistic jump directions
-   
+
    - **AHoldingObject**: Interactive objects for BiteCat manipulation
      - Configurable weight system with collision and physics properties
      - Hold offset positioning for realistic carrying animations
      - State tracking (held/released) with proper physics damping
+
+   - **AMovingPlatform**: Linear moving platforms for dynamic level elements
+     - Blueprint-configurable movement distance (FVector for X/Y/Z axes)
+     - Configurable movement speed (units per second)
+     - Ping-pong movement between start and target locations
+     - Characters attach during parkour to maintain relative position
+
+   - **ARotationPlatform**: Rotating platforms for orientation-based puzzles
+     - Configurable rotation speed per axis (Roll, Pitch, Yaw in degrees/sec)
+     - Continuous rotation on specified axes
+     - Characters attach during parkour to maintain relative position
 
 6. **Projectile Combat System**
    - **AProjectile**: Advanced projectile actors with multiple behavior types
@@ -103,7 +114,7 @@ The project implements a modular dual-cat cooperative system designed for platfo
      - Physics-based knockback with character state awareness
      - Configurable damage, speed, and lifetime parameters
      - Distance-based auto-destruction from spawn volume
-   
+
    - **AProjectileVolume**: Area-based projectile spawning system
      - Multiple launch modes (targeted, random, mixed)
      - Configurable spawn rates and simultaneous projectile limits
@@ -171,7 +182,9 @@ Source/FCJ/
 │   ├── WallJumpObject.cpp/h    # Wall surfaces for wall jumping mechanics
 │   ├── HoldingObject.cpp/h     # Objects that can be grabbed by BiteCat
 │   ├── Projectile.cpp/h        # Advanced projectile system with homing and knockback
-│   └── ProjectileVolume.cpp/h  # Spawns and manages projectiles in designated areas
+│   ├── ProjectileVolume.cpp/h  # Spawns and manages projectiles in designated areas
+│   ├── MovingPlatform.cpp/h    # Linear moving platforms with ping-pong movement
+│   └── RotationPlatform.cpp/h  # Continuously rotating platforms
 ├── Animation/                   # Animation notify states
 │   └── ParryingNotifyState.cpp/h # Animation notify for parrying mechanics
 └── Widdget/                     # UI widgets (note: typo in folder name)
@@ -205,7 +218,7 @@ Source/FCJ/
 
 ### Dual-Character Input System
 - Enhanced Input System optimized for precise platformer controls
-- Independent character control with coordinated cooperative actions  
+- Independent character control with coordinated cooperative actions
 - Camera-relative movement for intuitive platforming navigation
 - Special action inputs designed for timing-critical cooperative maneuvers
 
@@ -426,6 +439,9 @@ int32 GetPlayerRole(const FString& PlayerNetId) const;                   // Quer
   - **Movement Mode Management**: Switches to Flying mode during parkour for Z-axis root motion
   - **Root Motion Priority**: Pure animation-driven movement without Motion Warping dependency
   - **Jump Priority**: Parkour → Wall Jump → Normal Jump execution order
+  - **Actor Attachment**: Character attaches to parkour target during animation (KeepWorld rules)
+    - Maintains relative position when parkour target is moving (MovingPlatform, RotationPlatform)
+    - Detaches on completion to restore independent movement
   - **Networking**: Server manages state transitions, multicast synchronizes animations with proper root motion replication
 
 - **Object Interaction Framework**: Complete holding/carrying system for puzzle mechanics
@@ -449,9 +465,3 @@ int32 GetPlayerRole(const FString& PlayerNetId) const;                   // Quer
   - ESC menu created once and toggled via visibility for performance
   - Proper input mode transitions (GameOnly ↔ GameAndUI) for multiplayer compatibility
   - Display setting persistence across level changes through GameUserSettings
-
-# important-instruction-reminders
-Do what has been asked; nothing more, nothing less.
-NEVER create files unless they're absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.

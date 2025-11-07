@@ -151,18 +151,18 @@ void AAttackCat::ServerPushNearbyObjects_Implementation()
 	{
 		if (AHoldingObject* HoldingObject = Cast<AHoldingObject>(Actor))
 		{
-			// CollisionComponent 찾기
-			if (UBoxComponent* CollisionComp = HoldingObject->FindComponentByClass<UBoxComponent>())
+			// MeshComponent 찾기 (실제 물리 담당)
+			if (UStaticMeshComponent* MeshComp = HoldingObject->FindComponentByClass<UStaticMeshComponent>())
 			{
 				// 물리 시뮬레이션 확인 및 활성화
-				if (!CollisionComp->IsSimulatingPhysics())
+				if (!MeshComp->IsSimulatingPhysics())
 				{
-					CollisionComp->SetSimulatePhysics(true);
+					MeshComp->SetSimulatePhysics(true);
 				}
 
 				// 임펄스로 밀어내기
-				FVector PushImpulse = PushDirection * PushForce * CollisionComp->GetMass();
-				CollisionComp->AddImpulse(PushImpulse);
+				FVector PushImpulse = PushDirection * PushForce * MeshComp->GetMass();
+				MeshComp->AddImpulse(PushImpulse);
 
 				UE_LOG(LogTemp, Warning, TEXT("AttackCat: Pushed object %s with force %.2f"), *HoldingObject->GetName(), PushForce);
 			}
