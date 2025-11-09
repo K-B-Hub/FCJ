@@ -104,6 +104,7 @@ void ACatBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetime
 	DOREPLIFETIME(ACatBase, bIsPerformingParkour);
 	DOREPLIFETIME(ACatBase, CurrentParkourActor);
 	DOREPLIFETIME(ACatBase, bIsMontageePlaying);
+	DOREPLIFETIME(ACatBase, CurrentSpeedModifier);
 }
 
 // Called when the game starts or when spawned
@@ -142,6 +143,37 @@ void ACatBase::Tick(float DeltaTime)
 void ACatBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
+}
+
+void ACatBase::ServerSetMovementSpeed_Implementation(float Multiplier)
+{
+	if (Multiplier < 0.0f || Multiplier > 2.0f)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Invalid speed multiplier: %f"), Multiplier);
+		return;
+	}
+	CurrentSpeedModifier = Multiplier;
+	UpdateMovementSpeed(Multiplier);
+}
+
+void ACatBase::ApplySpeedModifier(float Multiplier)
+{
+	ServerSetMovementSpeed(Multiplier);
+}
+
+void ACatBase::OnRep_SpeedModifier()
+{
+	UpdateMovementSpeed(CurrentSpeedModifier);
+}
+
+void ACatBase::UpdateMovementSpeed(float Multiplier)
+{
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	if (Movement)
+	{
+		Movement->MaxWalkSpeed = MovementSpeed * Multiplier;
+		Movement->JumpZVelocity = JumpVelocity * Multiplier;
+	}
 }
 
 void ACatBase::ApplyBlueprintSettings()
@@ -642,4 +674,3 @@ FVector ACatBase::CalculateParkourTargetLocationPrecise(AActor* Actor) const
 
 	return TargetLocation;
 }
-

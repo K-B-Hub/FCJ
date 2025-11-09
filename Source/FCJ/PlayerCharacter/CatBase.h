@@ -82,7 +82,10 @@ protected:
 	// 점프 시 초기 수직 속도
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement Settings", meta = (ToolTip = "점프할 때 캐릭터가 받는 초기 상승 속도를 설정합니다"))
 	float JumpVelocity = 420.0f;
-
+	
+	UPROPERTY(ReplicatedUsing = OnRep_SpeedModifier, BlueprintReadOnly, Category = "Movement")
+	float CurrentSpeedModifier = 1.0f;
+	
 	// 공중에서의 이동 제어력 (0~1 사이값)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement Settings", meta = (ToolTip = "공중에 있을 때 방향 전환이 얼마나 쉬운지 설정합니다 (0=불가능, 1=지상과 동일)"))
 	float AirControl = 0.5f;
@@ -230,8 +233,22 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Special Actions")
 	virtual void PerformSpecialAction() { OnSpecialAction(); }
 
+	//외부에서 속도 제어할 시 접근할 함수
+	UFUNCTION(BlueprintCallable, Category = "Speed Control")
+	void ApplySpeedModifier(float Multiplier);
 	
 private:
 	// Apply Blueprint settings to components
 	void ApplyBlueprintSettings();
+
+	//AppplySpeedModifier에서 호출되는 RPC
+	UFUNCTION(Server, Reliable, Category = "Speed Control")
+	void ServerSetMovementSpeed(float Multiplier);
+
+	//서버에서 바꾸는 SpeedModifier의 RepNotify
+	UFUNCTION(Category = "Speed Control")
+	void OnRep_SpeedModifier();
+
+	//실제 속도 업데이트
+	void UpdateMovementSpeed(float Multiplier);
 };

@@ -31,6 +31,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Moving Platform")
 	float MovementSpeed;
 
+protected:
+	// 메시 컴포넌트 (블루프린트에서 다양한 오브젝트 설정 가능)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* MeshComponent;
+	
 private:
 	// Starting location of the platform
 	FVector StartLocation;

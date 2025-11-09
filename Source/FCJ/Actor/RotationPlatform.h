@@ -28,4 +28,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rotation Platform")
 	FRotator RotationSpeed;
 
+protected:
+	// 메시 컴포넌트 (블루프린트에서 다양한 오브젝트 설정 가능)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* MeshComponent;
+	
 };

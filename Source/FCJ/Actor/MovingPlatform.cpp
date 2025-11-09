@@ -9,6 +9,12 @@ AMovingPlatform::AMovingPlatform()
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	bReplicates = true;
+
+	// Create mesh component (RootComponent, 실제 물리 담당)
+	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
+	RootComponent = MeshComponent;
+
 	// Set default values
 	MovementDistance = FVector(0.0f, 0.0f, 0.0f);
 	MovementSpeed = 100.0f;
@@ -20,6 +26,13 @@ void AMovingPlatform::BeginPlay()
 {
 	Super::BeginPlay();
 
+	SetReplicateMovement(true);
+
+	if (MeshComponent)
+	{
+		MeshComponent->SetIsReplicated(true);
+	}
+	
 	// Store the starting location
 	StartLocation = GetActorLocation();
 
