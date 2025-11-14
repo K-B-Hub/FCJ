@@ -37,6 +37,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zone Settings", meta = (ToolTip = "true면 구역 내 ClearTrigger를 추적하여 퍼즐 클리어 여부를 판단합니다"))
 	bool bIsPuzzleZone;
 
+	// 구역 번호 (낮은 번호일수록 이전 구역)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zone Settings", meta = (ToolTip = "구역 번호 - 캐릭터 간 거리가 멀어질 때 더 낮은 번호의 구역으로 순간이동합니다"))
+	int32 ZoneNumber;
+
 	// Zone 클리어 여부 (모든 ClearTrigger가 클리어되면 true)
 	// 리플리케이션을 통해 서버-클라이언트 간 동기화
 	UPROPERTY(ReplicatedUsing = OnRep_IsZoneCleared, VisibleAnywhere, BlueprintReadOnly, Category = "Zone State")
@@ -96,4 +100,19 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Zone")
 	int32 GetClearedTriggerCount() const;
+
+	/**
+	 * 구역 번호를 반환합니다.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Zone")
+	int32 GetZoneNumber() const { return ZoneNumber; }
+	
+	UFUNCTION(BlueprintCallable, Category = "Zone")
+	void SetZoneNumber(int32 zoneNum) { ZoneNumber = zoneNum; }
+
+	/**
+	 * VolumeBox를 반환합니다.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Zone")
+	UBoxComponent* GetVolumeBox() const { return VolumeBox; }
 };

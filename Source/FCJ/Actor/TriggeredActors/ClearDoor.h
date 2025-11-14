@@ -38,6 +38,10 @@ protected:
 	// 문 자식 액터 컴포넌트 (Blueprint에서 위치/회전 조절 가능)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Components, meta = (ToolTip = "문 액터 컴포넌트 - Blueprint에서 Transform 조절 가능"))
 	UChildActorComponent* DoorComponent;
+	
+	// 구역 번호 (낮은 번호일수록 이전 구역)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zone Settings", meta = (ToolTip = "구역 번호 - 캐릭터 간 거리가 멀어질 때 더 낮은 번호의 구역으로 순간이동합니다"))
+	int32 ZoneNumber;
 
 private:
 	// 캐시된 자식 액터들

@@ -52,6 +52,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character Classes")
 	TSubclassOf<class ABiteCat> BiteCatClass;
 
+	// 캐릭터 간 최대 허용 거리 (이 거리를 초과하면 순간이동 발동)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Distance Settings", meta = (ToolTip = "두 캐릭터 간의 최대 허용 거리 - 이 거리를 초과하면 더 낮은 구역의 캐릭터 쪽으로 순간이동합니다"))
+	float MaxAllowedDistance = 3000.0f;
+
+	// 거리 체크 주기 (초 단위)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Distance Settings", meta = (ToolTip = "거리 체크를 수행하는 주기(초)"))
+	float DistanceCheckInterval = 1.0f;
+
 private:
 	// Apply saved display settings
 	void ApplySavedDisplaySettings();
@@ -65,4 +73,26 @@ private:
 
 	// Subsystem에서 저장된 역할 정보 가져오기
 	int32 GetRoleFromSubsystem(APlayerController* PC);
+
+	// 거리 체크 타이머 핸들
+	FTimerHandle DistanceCheckTimerHandle;
+
+	/**
+	 * 두 캐릭터 간의 거리를 체크하고 필요시 순간이동을 수행합니다.
+	 */
+	void CheckCharacterDistance();
+
+	/**
+	 * 캐릭터가 현재 속해 있는 ZoneVolume을 반환합니다.
+	 * @param Character 확인할 캐릭터
+	 * @return 캐릭터가 속한 ZoneVolume (없으면 nullptr)
+	 */
+	class AZoneVolume* GetCharacterZone(class ACatBase* Character);
+
+	/**
+	 * 캐릭터를 목표 캐릭터 위치로 순간이동시킵니다.
+	 * @param CharacterToTeleport 순간이동할 캐릭터
+	 * @param TargetCharacter 목표 캐릭터 (이 캐릭터 근처로 이동)
+	 */
+	void TeleportCharacter(ACatBase* CharacterToTeleport, ACatBase* TargetCharacter);
 }; 

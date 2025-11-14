@@ -16,8 +16,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnClearStateChanged, bool, bIsClear
 /**
  * 클리어 트리거 시스템
  * BaseTrigger를 자식 액터 컴포넌트로 가지며,
- * BaseTrigger가 활성화되면 클리어 상태가 true로 변경됩니다.
- * 한번 클리어되면 다시 false가 되지 않습니다.
+ * BaseTrigger의 상태에 따라 클리어 상태가 동적으로 변경됩니다.
+ * 트리거가 활성화되면 true, 비활성화되면 false가 됩니다.
  */
 UCLASS()
 class FCJ_API AClearTrigger : public AActor
@@ -39,7 +39,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Components, meta = (ToolTip = "트리거 액터 컴포넌트 - Blueprint에서 Transform 조절 가능"))
 	UChildActorComponent* TriggerComponent;
 
-	// 클리어 여부 (한번 true가 되면 영구적으로 true)
+	// 클리어 여부 (트리거 상태에 따라 변경 가능)
 	// 리플리케이션을 통해 서버-클라이언트 간 동기화
 	UPROPERTY(ReplicatedUsing = OnRep_IsCleared, VisibleAnywhere, BlueprintReadOnly, Category = "Clear State")
 	bool bIsCleared;

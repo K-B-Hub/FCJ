@@ -278,6 +278,9 @@ void ABiteCat::ServerReleaseThrow_Implementation(float ChargeTime)
 	FVector ThrowDirection = ForwardDirection + FVector(0.0f, 0.0f, 0.3f);
 	ThrowDirection.Normalize();
 
+	// 캐릭터의 현재 이동 속도 가져오기
+	FVector CharacterVelocity = GetVelocity();
+
 	// 오브젝트를 놓기
 	AHoldingObject* ObjectToThrow = CurrentHeldObject;
 	CurrentHeldObject->OnReleased();
@@ -292,16 +295,38 @@ void ABiteCat::ServerReleaseThrow_Implementation(float ChargeTime)
 	{
 		if (MeshComp->IsSimulatingPhysics())
 		{
-			// 계산된 힘으로 임펄스 던지기
+			// 계산된 힘으로 임펄스 계산
 			FVector ThrowImpulse = ThrowDirection * CalculatedForce * MeshComp->GetMass();
-			MeshComp->AddImpulse(ThrowImpulse);
+
+			// 캐릭터의 현재 속도를 운동량(momentum)으로 변환하여 추가
+			FVector CharacterMomentum = CharacterVelocity * MeshComp->GetMass();
+
+			// 최종 임펄스 = 던지기 힘 + 캐릭터의 운동량
+			FVector FinalImpulse = ThrowImpulse + CharacterMomentum;
+
+			MeshComp->AddImpulse(FinalImpulse);
+
+			UE_LOG(LogTemp, Warning, TEXT("Server: Threw object - CharacterVelocity: %s, ThrowImpulse: %s, FinalImpulse: %s"),
+				*CharacterVelocity.ToString(), *ThrowImpulse.ToString(), *FinalImpulse.ToString());
 		}
 		else
 		{
 			// 물리 시뮬레이션이 비활성화되어 있다면 활성화하고 던지기
 			MeshComp->SetSimulatePhysics(true);
+
+			// 계산된 힘으로 임펄스 계산
 			FVector ThrowImpulse = ThrowDirection * CalculatedForce * MeshComp->GetMass();
-			MeshComp->AddImpulse(ThrowImpulse);
+
+			// 캐릭터의 현재 속도를 운동량(momentum)으로 변환하여 추가
+			FVector CharacterMomentum = CharacterVelocity * MeshComp->GetMass();
+
+			// 최종 임펄스 = 던지기 힘 + 캐릭터의 운동량
+			FVector FinalImpulse = ThrowImpulse + CharacterMomentum;
+
+			MeshComp->AddImpulse(FinalImpulse);
+
+			UE_LOG(LogTemp, Warning, TEXT("Server: Threw object (physics enabled) - CharacterVelocity: %s, FinalImpulse: %s"),
+				*CharacterVelocity.ToString(), *FinalImpulse.ToString());
 		}
 	}
 

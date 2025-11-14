@@ -69,6 +69,7 @@ void AClearDoor::BeginPlay()
 	if (CachedZone)
 	{
 		CachedZone->OnZoneCleared.AddDynamic(this, &AClearDoor::OnZoneClearedCallback);
+		CachedZone->SetZoneNumber(ZoneNumber);
 		UE_LOG(LogTemp, Warning, TEXT("[ClearDoor] %s - Delegate bound to Zone"), *GetName());
 	}
 }

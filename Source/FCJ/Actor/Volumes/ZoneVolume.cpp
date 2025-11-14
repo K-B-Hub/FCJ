@@ -22,6 +22,7 @@ AZoneVolume::AZoneVolume()
 
 	bIsPuzzleZone = false;
 	bIsZoneCleared = false;
+	ZoneNumber = 0;
 }
 
 void AZoneVolume::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

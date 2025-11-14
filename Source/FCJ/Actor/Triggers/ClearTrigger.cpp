@@ -79,20 +79,13 @@ void AClearTrigger::OnTriggerStateChangedCallback(bool bNewState)
 	if (!HasAuthority())
 		return;
 
-	// 트리거가 활성화되고, 아직 클리어되지 않았다면
-	if (bNewState && !bIsCleared)
+	// 트리거 상태가 변경되었고, 현재 클리어 상태와 다르다면
+	if (bNewState != bIsCleared)
 	{
-		bIsCleared = true;
-		UE_LOG(LogTemp, Warning, TEXT("[ClearTrigger] %s - CLEARED! Broadcasting delegate"), *GetName());
+		bIsCleared = bNewState;
+		UE_LOG(LogTemp, Warning, TEXT("[ClearTrigger] %s - Clear state changed to %d! Broadcasting delegate"), *GetName(), bIsCleared);
 
 		// 서버에서 델리게이트 브로드캐스트
 		OnClearStateChanged.Broadcast(bIsCleared);
-
-		// 한번 클리어되면 더 이상 델리게이트를 들을 필요가 없음
-		if (CachedTrigger)
-		{
-			CachedTrigger->OnTriggerStateChanged.RemoveDynamic(this, &AClearTrigger::OnTriggerStateChangedCallback);
-			UE_LOG(LogTemp, Warning, TEXT("[ClearTrigger] %s - Delegate unbound"), *GetName());
-		}
 	}
 }
