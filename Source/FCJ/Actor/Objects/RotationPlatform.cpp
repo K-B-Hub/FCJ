@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Actor/RotationPlatform.h"
+#include "Actor/Objects/RotationPlatform.h"
 
 // Sets default values
 ARotationPlatform::ARotationPlatform()

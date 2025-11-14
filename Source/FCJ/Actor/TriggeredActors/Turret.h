@@ -7,7 +7,7 @@
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/TimerHandle.h"
-#include "Projectile.h"
+#include "Actor/Objects/Projectile.h"
 #include "Net/UnrealNetwork.h"
 #include "Turret.generated.h"
 
@@ -87,26 +87,21 @@ public:
 	UFUNCTION()
 	void OnDetectionEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex);
 
-	// 포탑 활성화/비활성화
+	// 포탑 활성화/비활성화 (서버에서만 호출, 리플리케이션을 통해 클라이언트 동기화)
 	UFUNCTION(BlueprintCallable, Category = "Turret")
 	void SetActive(bool bNewActive);
-
-	UFUNCTION(Server, Reliable, Category = "Turret")
-	void ServerSetActive(bool bNewActive);
 
 	UFUNCTION(BlueprintCallable, Category = "Turret")
 	bool IsActive() const { return bIsActive; }
 
-	// 발사 로직
-	UFUNCTION(Server, Reliable, Category = "Turret")
-	void ServerFireProjectile();
-
+	// 발사 시각/사운드 효과용 Multicast
 	UFUNCTION(NetMulticast, Reliable, Category = "Turret")
 	void MulticastOnProjectileFired(AProjectile* NewProjectile);
 
 private:
 	void StartFiring();
 	void StopFiring();
+	void FireProjectile();
 	void UpdateTargetRotation(float DeltaTime);
 	void SelectRandomTarget();
 	EProjectileType GetRandomProjectileType() const;

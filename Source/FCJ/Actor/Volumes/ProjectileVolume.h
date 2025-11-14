@@ -6,7 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "Components/BoxComponent.h"
 #include "Engine/TimerHandle.h"
-#include "Projectile.h"
+#include "Actor/Objects/Projectile.h"
 #include "Net/UnrealNetwork.h"
 #include "ProjectileVolume.generated.h"
 

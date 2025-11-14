@@ -3,24 +3,24 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Actor/BaseTrigger.h"
+#include "Actor/Triggers/BaseTrigger.h"
 #include "Components/BoxComponent.h"
-#include "PlayerVisitedTrigger.generated.h"
+#include "ProjectilePassTrigger.generated.h"
 
-class ACatBase;
+class AProjectile;
 
 /**
- * 플레이어 방문 트리거
- * 플레이어가 트리거 영역을 한 번이라도 방문하면 영구적으로 true를 반환합니다.
- * bInvertTrigger를 true로 설정하면 플레이어가 방문한 후 false를 반환합니다.
+ * 발사체 통과 트리거
+ * Projectile이 트리거 영역을 한 번이라도 지나가면 영구적으로 true를 반환합니다.
+ * bInvertTrigger를 true로 설정하면 발사체가 지나간 후 false를 반환합니다.
  */
 UCLASS()
-class FCJ_API APlayerVisitedTrigger : public ABaseTrigger
+class FCJ_API AProjectilePassTrigger : public ABaseTrigger
 {
 	GENERATED_BODY()
 
 public:
-	APlayerVisitedTrigger();
+	AProjectilePassTrigger();
 
 protected:
 	virtual void BeginPlay() override;
@@ -29,16 +29,16 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Components)
 	UBoxComponent* TriggerBox;
 
-	// 플레이어가 방문했는지 여부
+	// 발사체가 지나갔는지 여부
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Trigger State")
-	bool bPlayerVisited = false;
+	bool bProjectilePassed = false;
 
 	// 트리거를 리셋할 수 있는지 여부
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trigger Settings", meta = (ToolTip = "true면 트리거를 리셋할 수 있습니다"))
 	bool bCanReset = false;
 
 public:
-	// 내부 트리거 상태 반환 (플레이어가 방문했으면 true)
+	// 내부 트리거 상태 반환 (발사체가 지나갔으면 true)
 	virtual bool GetInternalTriggerState_Implementation() const override;
 
 	UFUNCTION()

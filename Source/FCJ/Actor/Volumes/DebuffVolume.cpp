@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Actor/DebuffVolume.h"
+#include "Actor/Volumes/DebuffVolume.h"
 
 #include "PlayerCharacter/CatBase.h"
 #include "Components/BoxComponent.h"

@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Actor/BaseTrigger.h"
+#include "Actor/Triggers/BaseTrigger.h"
 #include "Components/BoxComponent.h"
 #include "HoldingObjectOverlapTrigger.generated.h"
 

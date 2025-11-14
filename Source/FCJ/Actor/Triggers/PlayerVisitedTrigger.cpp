@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Actor/PlayerVisitedTrigger.h"
+#include "Actor/Triggers/PlayerVisitedTrigger.h"
 #include "PlayerCharacter/CatBase.h"
 #include "Components/BoxComponent.h"
 
@@ -34,18 +34,33 @@ bool APlayerVisitedTrigger::GetInternalTriggerState_Implementation() const
 
 void APlayerVisitedTrigger::OnTriggerBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	// 서버에서만 오버랩 처리 (리플리케이션을 통해 클라이언트 동기화)
+	if (!HasAuthority())
+	{
+		return;
+	}
+
 	ACatBase* Player = Cast<ACatBase>(OtherActor);
-	if (Player)
+	if (Player && !bPlayerVisited)
 	{
 		// 플레이어가 방문하면 영구적으로 true로 설정
 		bPlayerVisited = true;
+		SetTriggerActive(GetInternalTriggerState());
 	}
 }
 
 void APlayerVisitedTrigger::ResetTrigger()
 {
-	if (bCanReset)
+	// 서버에서만 리셋 가능
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (bCanReset && bPlayerVisited)
 	{
 		bPlayerVisited = false;
+		// 상태 변경 이벤트 발생
+		SetTriggerActive(GetInternalTriggerState());
 	}
 }

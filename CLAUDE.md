@@ -96,11 +96,12 @@ The project implements a modular dual-cat cooperative system designed for platfo
      - Configurable weight system with collision and physics properties
      - Hold offset positioning for realistic carrying animations
      - State tracking (held/released) with proper physics damping
+     - Projectile damage transfer: When held by BiteCat and hit by projectile, damage/knockback transfers to BiteCat
 
    - **AMovingPlatform**: Linear moving platforms for dynamic level elements
      - Blueprint-configurable movement distance (FVector for X/Y/Z axes)
      - Configurable movement speed (units per second)
-     - Ping-pong movement between start and target locations
+     - Ping-pong movement between start and target location
      - Characters attach during parkour to maintain relative position
 
    - **ARotationPlatform**: Rotating platforms for orientation-based puzzles
@@ -114,12 +115,45 @@ The project implements a modular dual-cat cooperative system designed for platfo
      - Physics-based knockback with character state awareness
      - Configurable damage, speed, and lifetime parameters
      - Distance-based auto-destruction from spawn volume
+     - Damage transfer: When hitting held HoldingObject, applies damage/knockback to holding BiteCat
 
    - **AProjectileVolume**: Area-based projectile spawning system
      - Multiple launch modes (targeted, random, mixed)
      - Configurable spawn rates and simultaneous projectile limits
      - Player detection and targeting system
      - Blueprint-exposed Korean tooltips for designer-friendly configuration
+
+7. **Event-Driven Trigger System**
+   - **ABaseTrigger**: Abstract base class for all trigger types
+     - Event-based delegate architecture (`FOnTriggerStateChanged`)
+     - Replicated state with RepNotify callbacks for client synchronization
+     - Server-authoritative state management
+     - Invert trigger option for flexible logic
+     - Virtual `GetInternalTriggerState()` for derived class implementation
+
+   - **Trigger Variants**: Specialized trigger implementations
+     - **HoldingObjectOverlapTrigger**: Activates when HoldingObject overlaps trigger volume
+     - **ProjectilePassTrigger**: One-time trigger activated by projectile passing through
+     - **PlayerOverlapTrigger**: Activates when player overlaps trigger volume
+     - **PlayerVisitedTrigger**: One-time trigger activated when player visits location
+
+   - **ATriggeredTurret**: Composite actor with ChildActorComponents
+     - Contains ATurret and ABaseTrigger as child actors
+     - Delegate-based activation (no Tick polling)
+     - Blueprint-adjustable component transforms
+     - Server-authoritative turret firing
+
+   - **AMovingDoor**: Animated door that opens upward
+     - Opens permanently when activated (never closes)
+     - Replicated door state with RepNotify
+     - Blueprint-configurable movement distance and speed
+     - Timeline-based smooth animation
+
+   - **ATriggeredDoor**: Two-trigger AND logic door system
+     - Contains AMovingDoor and 2 ABaseTrigger as child actors
+     - Opens only when both triggers are active simultaneously
+     - One-time activation (door stays open permanently)
+     - Automatic delegate unbinding after door opens
 
 ### Game Mode Structure
 - **AMultiGameMode**: Cooperative platformer game mode
@@ -178,13 +212,27 @@ Source/FCJ/
 │   └── MainMenuController.cpp/h
 ├── Subsystem/                   # Game subsystems
 │   └── MultiSessionSubsystem.cpp/h # Steam Online Subsystem integration for sessions
-├── Actor/                       # Game objects and actors
-│   ├── WallJumpObject.cpp/h    # Wall surfaces for wall jumping mechanics
-│   ├── HoldingObject.cpp/h     # Objects that can be grabbed by BiteCat
-│   ├── Projectile.cpp/h        # Advanced projectile system with homing and knockback
-│   ├── ProjectileVolume.cpp/h  # Spawns and manages projectiles in designated areas
-│   ├── MovingPlatform.cpp/h    # Linear moving platforms with ping-pong movement
-│   └── RotationPlatform.cpp/h  # Continuously rotating platforms
+├── Actor/                       # Game objects and actors (organized in subdirectories)
+│   ├── Triggers/               # Event-driven trigger implementations
+│   │   ├── BaseTrigger.cpp/h                    # Abstract base trigger with delegate system
+│   │   ├── HoldingObjectOverlapTrigger.cpp/h    # Trigger for HoldingObject overlap detection
+│   │   ├── ProjectilePassTrigger.cpp/h          # One-time projectile pass trigger
+│   │   ├── PlayerOverlapTrigger.cpp/h           # Trigger for player overlap detection
+│   │   └── PlayerVisitedTrigger.cpp/h           # One-time player visit trigger
+│   ├── TriggeredActors/        # Actors controlled by triggers
+│   │   ├── Turret.cpp/h                         # Basic turret with firing logic
+│   │   ├── TriggeredTurret.cpp/h                # Trigger-controlled turret system
+│   │   ├── MovingDoor.cpp/h                     # Animated upward-opening door
+│   │   └── TriggeredDoor.cpp/h                  # Two-trigger AND logic door system
+│   ├── Volumes/                # Volume-based game mechanics
+│   │   ├── ProjectileVolume.cpp/h               # Spawns and manages projectiles
+│   │   └── DebuffVolume.cpp/h                   # Applies debuffs to players in volume
+│   └── Objects/                # Interactive game objects
+│       ├── WallJumpObject.cpp/h                 # Wall surfaces for wall jumping
+│       ├── HoldingObject.cpp/h                  # Objects grabbable by BiteCat
+│       ├── Projectile.cpp/h                     # Advanced projectile system
+│       ├── MovingPlatform.cpp/h                 # Linear moving platforms
+│       └── RotationPlatform.cpp/h               # Rotating platforms
 ├── Animation/                   # Animation notify states
 │   └── ParryingNotifyState.cpp/h # Animation notify for parrying mechanics
 └── Widdget/                     # UI widgets (note: typo in folder name)
@@ -243,11 +291,36 @@ Source/FCJ/
 - **Blueprint Integration**: OnSpecialAction() event for complex cooperative mechanics
 - **AnimNotify Pattern**: ParryingNotifyState demonstrates animation-driven gameplay events
 
+### Event-Driven Trigger Architecture
+The project uses a delegate-based trigger system to eliminate unnecessary Tick polling:
+
+- **Delegate Pattern**: `DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTriggerStateChanged, bool, bNewState)`
+- **Event Propagation**: Triggers broadcast state changes via `OnTriggerStateChanged.Broadcast(bNewState)`
+- **Subscriber Pattern**: Triggered actors bind callbacks via `AddDynamic(this, &AClass::Callback)`
+- **Network Synchronization**:
+  - Server authority: Only server can call `SetTriggerActive()`
+  - RepNotify: `OnRep_IsActive()` broadcasts delegate on clients for UI/effects
+  - Server-side delegates trigger gameplay logic, client-side delegates trigger visual feedback
+
+**ChildActorComponent Networking Pattern**:
+- ChildActorComponent-spawned actors (like Turret in TriggeredTurret) lack owning connections
+- NEVER use Server RPCs for child actors - causes "No owning connection" warnings
+- Instead: Use direct function calls with `HasAuthority()` checks
+- Example: `void SetActive(bool bNewActive) { if (!HasAuthority()) return; ... }`
+
+**Trigger System Benefits**:
+- Eliminates constant Tick polling overhead
+- Immediate response to state changes (no frame delay)
+- Clean separation between trigger logic and triggered behavior
+- Easy to add new trigger types by extending `ABaseTrigger`
+- Delegate unbinding after one-time events (e.g., door opens permanently)
+
 ### Cooperative Game Flow
 - Level design supports dual-character progression (one cat opens path for other)
 - Checkpoint system accounts for both cats' positions and states
 - Game modes handle cooperative respawning and progress tracking
 - UI system provides feedback for both players' actions and cooperative opportunities
+- Trigger-based puzzles require coordination between cats (e.g., both standing on pressure plates)
 
 ## Networking & Multiplayer Architecture
 

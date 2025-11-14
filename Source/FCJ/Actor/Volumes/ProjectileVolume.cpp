@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Actor/ProjectileVolume.h"
+#include "Actor/Volumes/ProjectileVolume.h"
 #include "PlayerCharacter/CatBase.h"
 #include "Components/BoxComponent.h"
 #include "Engine/World.h"

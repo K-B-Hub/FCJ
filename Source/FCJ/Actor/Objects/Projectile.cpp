@@ -1,8 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Actor/Projectile.h"
+#include "Actor/Objects/Projectile.h"
 #include "PlayerCharacter/CatBase.h"
-#include "Actor/ProjectileVolume.h"
+#include "PlayerCharacter/BiteCat.h"
+#include "Actor/Volumes/ProjectileVolume.h"
+#include "Actor/Objects/HoldingObject.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
@@ -199,6 +201,8 @@ void AProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, U
 void AProjectile::ServerOnHit_Implementation(AActor* OtherActor, const FHitResult& Hit)
 {
 	ACatBase* HitCat = Cast<ACatBase>(OtherActor);
+
+	// Check if we hit a CatBase directly
 	if (HitCat)
 	{
 		// Apply damage
@@ -218,6 +222,37 @@ void AProjectile::ServerOnHit_Implementation(AActor* OtherActor, const FHitResul
 
 			FVector TotalKnockback = HorizontalKnockback + VerticalKnockback;
 			MovementComponent->AddImpulse(TotalKnockback, true);
+		}
+	}
+	else
+	{
+		// Check if we hit a HoldingObject that is being held by BiteCat
+		AHoldingObject* HitObject = Cast<AHoldingObject>(OtherActor);
+		if (HitObject && HitObject->IsBeingHeld() && HitObject->GetHoldingCat())
+		{
+			// Apply damage and knockback to the BiteCat holding the object
+			ACatBase* HoldingCatBase = Cast<ACatBase>(HitObject->GetHoldingCat());
+			if (HoldingCatBase)
+			{
+				// Apply damage
+				UGameplayStatics::ApplyPointDamage(HoldingCatBase, Damage, GetActorLocation(), Hit, nullptr, this, UDamageType::StaticClass());
+
+				// Apply knockback force
+				FVector KnockbackDirection = (HoldingCatBase->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+
+				// Apply the knockback force to the character's movement component
+				if (UCharacterMovementComponent* MovementComponent = HoldingCatBase->GetCharacterMovement())
+				{
+					// Calculate horizontal knockback
+					FVector HorizontalKnockback = FVector(KnockbackDirection.X, KnockbackDirection.Y, 0.0f).GetSafeNormal() * KnockbackForce;
+
+					// Add vertical knockback component
+					FVector VerticalKnockback = FVector(0.0f, 0.0f, VerticalKnockbackForce);
+
+					FVector TotalKnockback = HorizontalKnockback + VerticalKnockback;
+					MovementComponent->AddImpulse(TotalKnockback, true);
+				}
+			}
 		}
 	}
 

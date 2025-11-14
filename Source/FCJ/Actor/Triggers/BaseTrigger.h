@@ -6,6 +6,9 @@
 #include "GameFramework/Actor.h"
 #include "BaseTrigger.generated.h"
 
+// 트리거 상태 변경 델리게이트
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTriggerStateChanged, bool, bNewState);
+
 /**
  * 베이스 트리거 클래스
  * 파생 클래스에서 다양한 조건으로 True/False 상태를 구현할 수 있습니다.
@@ -23,8 +26,13 @@ protected:
 	virtual void BeginPlay() override;
 
 	// 트리거의 현재 상태 (활성화/비활성화)
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Trigger State")
+	// 리플리케이션을 통해 서버-클라이언트 간 동기화
+	UPROPERTY(ReplicatedUsing = OnRep_IsActive, VisibleAnywhere, BlueprintReadOnly, Category = "Trigger State")
 	bool bIsActive;
+
+	// bIsActive 리플리케이션 콜백
+	UFUNCTION()
+	void OnRep_IsActive();
 
 	// 트리거 상태를 반전할지 여부
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trigger Settings", meta = (ToolTip = "true면 트리거 상태를 반전하여 반환합니다"))
@@ -32,6 +40,10 @@ protected:
 
 public:
 	virtual void Tick(float DeltaTime) override;
+
+	// 트리거 상태 변경 이벤트
+	UPROPERTY(BlueprintAssignable, Category = "Trigger")
+	FOnTriggerStateChanged OnTriggerStateChanged;
 
 	/**
 	 * 트리거가 활성화되어 있는지 확인합니다.

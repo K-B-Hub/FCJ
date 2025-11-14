@@ -6,7 +6,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/BoxComponent.h"
-#include "Actor/WallJumpObject.h"
+#include "Actor/Objects/WallJumpObject.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "Animation/AnimMontage.h"

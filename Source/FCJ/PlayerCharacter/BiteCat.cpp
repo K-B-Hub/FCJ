@@ -2,7 +2,7 @@
 
 
 #include "PlayerCharacter/BiteCat.h"
-#include "Actor/HoldingObject.h"
+#include "Actor/Objects/HoldingObject.h"
 #include "Components/BoxComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"

@@ -89,4 +89,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Holding")
 	FVector GetHoldOffset() const { return HoldOffset; }
 
+	UFUNCTION(BlueprintCallable, Category = "Holding")
+	ABiteCat* GetHoldingCat() const { return HoldingCat; }
+
 };

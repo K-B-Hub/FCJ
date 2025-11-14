@@ -40,16 +40,12 @@ protected:
 	UChildActorComponent* TriggerComponent;
 
 	// 트리거 상태를 자동으로 체크할지 여부
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trigger Settings", meta = (ToolTip = "트리거 상태를 자동으로 체크하여 포탑을 제어할지 여부"))
+	// 델리게이트 기반 이벤트 처리를 사용하지만, 수동으로 초기 상태를 체크할지 여부를 제어합니다.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trigger Settings", meta = (ToolTip = "BeginPlay에서 초기 트리거 상태를 체크할지 여부"))
 	bool bAutoCheckTrigger = true;
-
-	// 트리거 체크 빈도 (초)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trigger Settings", meta = (ClampMin = "0.1", ToolTip = "트리거 상태를 체크하는 주기 (초)"))
-	float TriggerCheckInterval = 0.1f;
 
 private:
 	bool bLastTriggerState;
-	float TimeSinceLastCheck;
 
 	// 캐시된 자식 액터들
 	UPROPERTY()
@@ -58,11 +54,17 @@ private:
 	UPROPERTY()
 	ABaseTrigger* CachedTrigger;
 
-public:
-	virtual void Tick(float DeltaTime) override;
+	/**
+	 * 트리거 상태 변경 시 호출되는 콜백 함수
+	 * @param bNewState 새로운 트리거 상태
+	 */
+	UFUNCTION()
+	void OnTriggerStateChangedCallback(bool bNewState);
 
+public:
 	/**
 	 * 트리거 상태를 수동으로 체크하고 포탑 상태를 업데이트합니다.
+	 * 주로 초기화 시 사용되며, 이후에는 델리게이트가 자동으로 처리합니다.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Trigger")
 	void CheckTriggerState();

@@ -1,13 +1,14 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Actor/TriggeredTurret.h"
-#include "Actor/Turret.h"
-#include "Actor/BaseTrigger.h"
+#include "Actor/TriggeredActors/TriggeredTurret.h"
+#include "Actor/TriggeredActors/Turret.h"
+#include "Actor/Triggers/BaseTrigger.h"
 #include "Components/ChildActorComponent.h"
 
 ATriggeredTurret::ATriggeredTurret()
 {
-	PrimaryActorTick.bCanEverTick = true;
+	// 델리게이트 기반 이벤트 처리를 사용하므로 Tick 비활성화
+	PrimaryActorTick.bCanEverTick = false;
 
 	// 루트 씬 컴포넌트 생성
 	RootSceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootScene"));
@@ -24,7 +25,6 @@ ATriggeredTurret::ATriggeredTurret()
 	// Trigger 클래스는 Blueprint에서 설정 (Child Actor Class)
 
 	bLastTriggerState = false;
-	TimeSinceLastCheck = 0.0f;
 	CachedTurret = nullptr;
 	CachedTrigger = nullptr;
 }
@@ -44,34 +44,15 @@ void ATriggeredTurret::BeginPlay()
 		CachedTrigger = Cast<ABaseTrigger>(TriggerComponent->GetChildActor());
 	}
 
-	// 초기 트리거 상태 확인
-	if (CachedTrigger && bAutoCheckTrigger)
+	// 트리거 델리게이트 바인딩
+	if (CachedTrigger)
 	{
-		CheckTriggerState();
-	}
-}
+		CachedTrigger->OnTriggerStateChanged.AddDynamic(this, &ATriggeredTurret::OnTriggerStateChangedCallback);
 
-void ATriggeredTurret::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-	// 자동 트리거 체크가 활성화되어 있고 트리거가 설정되어 있으면
-	if (bAutoCheckTrigger && CachedTrigger && CachedTurret)
-	{
-		TimeSinceLastCheck += DeltaTime;
-
-		if (TimeSinceLastCheck >= TriggerCheckInterval)
+		// 초기 트리거 상태 확인
+		if (bAutoCheckTrigger)
 		{
 			CheckTriggerState();
-			TimeSinceLastCheck = 0.0f;
-		}
-
-		// 트리거가 비활성화 상태인데 Turret이 활성화되어 있으면 강제로 비활성화
-		// (Turret의 자동 활성화를 방지)
-		bool bCurrentTriggerState = CachedTrigger->IsTriggerActive();
-		if (!bCurrentTriggerState && CachedTurret->IsActive())
-		{
-			CachedTurret->SetActive(false);
 		}
 	}
 }
@@ -101,5 +82,15 @@ void ATriggeredTurret::CheckTriggerState()
 			CachedTurret->SetActive(false);
 		}
 	}
+}
+
+void ATriggeredTurret::OnTriggerStateChangedCallback(bool bNewState)
+{
+	if (!CachedTurret)
+		return;
+
+	// 델리게이트를 통해 트리거 상태 변경 이벤트를 받으면 즉시 포탑 상태 업데이트
+	bLastTriggerState = bNewState;
+	CachedTurret->SetActive(bNewState);
 }
 

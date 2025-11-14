@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Actor/ProjectilePassTrigger.h"
-#include "Actor/Projectile.h"
+#include "Actor/Triggers/ProjectilePassTrigger.h"
+#include "Actor/Objects/Projectile.h"
 #include "Components/BoxComponent.h"
 
 AProjectilePassTrigger::AProjectilePassTrigger()
@@ -33,18 +33,33 @@ bool AProjectilePassTrigger::GetInternalTriggerState_Implementation() const
 
 void AProjectilePassTrigger::OnTriggerBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	// 서버에서만 오버랩 처리 (리플리케이션을 통해 클라이언트 동기화)
+	if (!HasAuthority())
+	{
+		return;
+	}
+
 	AProjectile* Projectile = Cast<AProjectile>(OtherActor);
-	if (Projectile)
+	if (Projectile && !bProjectilePassed)
 	{
 		// 발사체가 지나가면 영구적으로 true로 설정
 		bProjectilePassed = true;
+		SetTriggerActive(GetInternalTriggerState());
 	}
 }
 
 void AProjectilePassTrigger::ResetTrigger()
 {
-	if (bCanReset)
+	// 서버에서만 리셋 가능
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (bCanReset && bProjectilePassed)
 	{
 		bProjectilePassed = false;
+		// 상태 변경 이벤트 발생
+		SetTriggerActive(GetInternalTriggerState());
 	}
 }

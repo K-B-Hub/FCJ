@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Actor/MovingPlatform.h"
+#include "Actor/Objects/MovingPlatform.h"
 
 // Sets default values
 AMovingPlatform::AMovingPlatform()

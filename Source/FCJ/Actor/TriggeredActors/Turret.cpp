@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Actor/Turret.h"
+#include "Actor/TriggeredActors/Turret.h"
 #include "PlayerCharacter/CatBase.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -70,7 +70,7 @@ void ATurret::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	CleanupDetectedPlayers();
+	//CleanupDetectedPlayers();
 
 	if (bIsActive && CurrentTarget)
 	{
@@ -109,18 +109,12 @@ void ATurret::OnDetectionEndOverlap(UPrimitiveComponent* OverlappedComponent, AA
 
 void ATurret::SetActive(bool bNewActive)
 {
-	if (HasAuthority())
+	// 서버에서만 상태 변경 가능 (리플리케이션을 통해 클라이언트 동기화)
+	if (!HasAuthority())
 	{
-		ServerSetActive(bNewActive);
+		return;
 	}
-	else
-	{
-		ServerSetActive(bNewActive);
-	}
-}
 
-void ATurret::ServerSetActive_Implementation(bool bNewActive)
-{
 	if (bIsActive == bNewActive)
 		return;
 
@@ -141,7 +135,7 @@ void ATurret::StartFiring()
 	if (!GetWorld() || !HasAuthority())
 		return;
 
-	GetWorld()->GetTimerManager().SetTimer(FireTimerHandle, this, &ATurret::ServerFireProjectile, FireInterval, true);
+	GetWorld()->GetTimerManager().SetTimer(FireTimerHandle, this, &ATurret::FireProjectile, FireInterval, true);
 }
 
 void ATurret::StopFiring()
@@ -185,7 +179,7 @@ void ATurret::SelectRandomTarget()
 	CurrentTarget = DetectedPlayers[RandomIndex];
 }
 
-void ATurret::ServerFireProjectile_Implementation()
+void ATurret::FireProjectile()
 {
 	if (!GetWorld() || !ProjectileClass || !HasAuthority())
 		return;
@@ -207,7 +201,7 @@ void ATurret::ServerFireProjectile_Implementation()
 	FVector Direction = (CurrentTarget->GetActorLocation() - SpawnLocation).GetSafeNormal();
 	EProjectileType ProjectileType = GetRandomProjectileType();
 
-	// 발사체 생성
+	// 발사체 생성 (서버에서만 생성, 자동으로 클라이언트에 리플리케이트됨)
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
