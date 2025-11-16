@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Components/BoxComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "BaseTrigger.generated.h"
 
 // 트리거 상태 변경 델리게이트
@@ -25,6 +27,14 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	// 트리거 박스 컴포넌트 (모든 파생 클래스에서 공통으로 사용)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Components)
+	UBoxComponent* TriggerBox;
+
+	// 시각적 힌트를 위한 스태틱 메시 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Components)
+	UStaticMeshComponent* TriggerMesh;
+
 	// 트리거의 현재 상태 (활성화/비활성화)
 	// 리플리케이션을 통해 서버-클라이언트 간 동기화
 	UPROPERTY(ReplicatedUsing = OnRep_IsActive, VisibleAnywhere, BlueprintReadOnly, Category = "Trigger State")
@@ -37,6 +47,21 @@ protected:
 	// 트리거 상태를 반전할지 여부
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trigger Settings", meta = (ToolTip = "true면 트리거 상태를 반전하여 반환합니다"))
 	bool bInvertTrigger = false;
+
+	// 트리거 비활성화 시 오버레이 머테리얼
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual Feedback", meta = (ToolTip = "트리거가 비활성화되었을 때 적용할 오버레이 머테리얼"))
+	UMaterialInterface* InactiveMaterial;
+
+	// 트리거 활성화 시 오버레이 머테리얼
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual Feedback", meta = (ToolTip = "트리거가 활성화되었을 때 적용할 오버레이 머테리얼"))
+	UMaterialInterface* ActiveMaterial;
+
+	// 머테리얼 업데이트 잠금 여부 (ClearTrigger 등에서 사용)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visual Feedback")
+	bool bLockMaterial = false;
+
+	// 머테리얼을 업데이트합니다
+	void UpdateTriggerMaterial();
 
 public:
 	virtual void Tick(float DeltaTime) override;
@@ -70,4 +95,11 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Trigger")
 	void SetTriggerActive(bool bNewActive);
+
+	/**
+	 * 오버레이 머테리얼을 잠그고 현재 상태로 고정합니다.
+	 * @param bActive 고정할 머테리얼 상태 (true: ActiveMaterial, false: InactiveMaterial)
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Visual Feedback")
+	void LockOverlayMaterial(bool bActive);
 };

@@ -28,15 +28,15 @@ protected:
 	virtual void BeginPlay() override;
 
 	// 루트 컴포넌트
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Components)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Components)
 	USceneComponent* RootSceneComponent;
 
 	// 포탑 자식 액터 컴포넌트 (Blueprint에서 위치/회전 조절 가능)
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Components, meta = (ToolTip = "포탑 액터 컴포넌트 - Blueprint에서 Transform 조절 가능"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Components, meta = (ToolTip = "포탑 액터 컴포넌트 - Blueprint에서 Transform 조절 가능"))
 	UChildActorComponent* TurretComponent;
 
 	// 트리거 자식 액터 컴포넌트 (Blueprint에서 위치/회전 조절 가능)
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Components, meta = (ToolTip = "트리거 액터 컴포넌트 - Blueprint에서 Transform 조절 가능"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Components, meta = (ToolTip = "트리거 액터 컴포넌트 - Blueprint에서 Transform 조절 가능"))
 	UChildActorComponent* TriggerComponent;
 
 	// 트리거 상태를 자동으로 체크할지 여부

@@ -155,13 +155,73 @@ The project implements a modular dual-cat cooperative system designed for platfo
      - One-time activation (door stays open permanently)
      - Automatic delegate unbinding after door opens
 
+8. **Zone-Based Progression System**
+   - **AZoneVolume**: Puzzle zone tracking and completion system
+     - `bIsPuzzleZone`: Enables ClearTrigger tracking within zone bounds
+     - `ZoneNumber`: Priority for teleportation system (lower = earlier zone)
+     - Automatically collects all ClearTriggers overlapping with VolumeBox
+     - Broadcasts `OnZoneCleared` delegate when all triggers cleared
+     - Replicated state for multiplayer synchronization
+
+   - **AClearTrigger**: Puzzle completion wrapper
+     - Wraps any BaseTrigger as ChildActorComponent
+     - Detects trigger activation as puzzle completion
+     - `bIsCleared` state changes dynamically with trigger state
+     - Used by ZoneVolume for multi-puzzle zone tracking
+     - BoxComponent for ZoneVolume overlap detection
+
+   - **AClearDoor**: Zone-completion door system
+     - Opens when associated ZoneVolume is cleared
+     - Contains ZoneVolume + MovingDoor as ChildActorComponents
+     - Blueprint-configurable component positioning
+     - Propagates ZoneNumber to child ZoneVolume
+     - One-time activation (door stays open permanently)
+
+9. **Player Management Systems**
+   - **Distance-Based Teleportation** (AMultiGameMode)
+     - `MaxAllowedDistance`: 3000.0f prevents player separation
+     - `DistanceCheckInterval`: 1.0s timer-based distance checks
+     - Teleports player in lower ZoneNumber to higher zone location
+     - Prevents level progression softlocks where one player advances too far
+     - Uses ZoneVolume.ZoneNumber to determine teleport direction
+
+   - **Respawn System** (ARespawnVolume)
+     - Kill volumes with visual spawn point markers
+     - BoxComponent for death trigger (overlaps with Pawn channel)
+     - CapsuleComponent for editor-only spawn point visualization
+     - Auto-respawns characters at SpawnPointVisualizer location
+     - Resets character velocity to prevent falling momentum
+     - Server-authoritative teleportation
+
+   - **Speed Modifier System** (ACatBase)
+     - Server-replicated `CurrentSpeedModifier` property
+     - `ApplySpeedModifier()` with RPC pattern for client calls
+     - `OnRep_SpeedModifier()` syncs speed changes to all clients
+     - Used by DebuffVolume (0.5x speed in hazard zones)
+
+10. **Level Transition & Loading System**
+    - **UFCJGameInstance**: Persistent game instance across level changes
+      - Manages LoadingWidget lifecycle (survives level transitions)
+      - `ShowLevelLoadingWidget()` / `HideLevelLoadingWidget()` for UI control
+      - `StartCheckingStreamingCompletion()` for async resource loading
+      - Timer-based streaming completion checks
+
+    - **ULoadingWidget**: Multi-state loading UI
+      - SessionLoadWidget: Steam session creation/join progress
+      - SessionFailContainer: Connection failure with retry button
+      - LevelLoadWidget: Level streaming progress display
+      - Persists across level transitions via GameInstance
+
 ### Game Mode Structure
 - **AMultiGameMode**: Cooperative platformer game mode
-  - Manages dual-cat cooperative gameplay
+  - Manages dual-cat cooperative gameplay with role-based character spawning
+  - Distance-based teleportation system (MaxAllowedDistance: 3000.0f)
   - Handles level progression and cooperative puzzle states
   - Checkpoint system for cooperative respawning
+  - Display settings management and persistence
 - **AMainMenuGameMode**: Main menu and level selection
 - **AMainMenuController**: UI navigation for game mode selection
+- **UFCJGameInstance**: Persistent game instance for loading UI and cross-level state
 
 ### UI System
 - **UMainMenuWidget**: Main menu with cooperative game options
@@ -193,14 +253,22 @@ The project implements a modular dual-cat cooperative system designed for platfo
   - Created once at controller BeginPlay and toggled via visibility
   - ESCAction binding for keyboard accessibility
 
+- **ULoadingWidget**: Multi-state loading screen
+  - SessionLoadWidget: Steam session operations
+  - SessionFailContainer: Connection failure handling
+  - LevelLoadWidget: Level streaming progress
+  - Managed by UFCJGameInstance for persistence
+
 ## File Organization
 
 ```
 Source/FCJ/
 ├── FCJ.cpp/h                    # Main module files
 ├── FCJ.Build.cs                 # Module build configuration
+├── GameInstance/                # Game instance for persistent state
+│   └── FCJGameInstance.cpp/h    # Loading widget & level transition management
 ├── GameMode/                    # Game mode implementations
-│   ├── MultiGameMode.cpp/h      # Main multiplayer game mode
+│   ├── MultiGameMode.cpp/h      # Main multiplayer mode with distance teleportation
 │   ├── MainMenuGameMode.cpp/h   # Menu mode
 │   └── LobbyGameState.cpp/h     # Replicated lobby state with player role management
 ├── PlayerCharacter/             # Character implementations
@@ -215,6 +283,7 @@ Source/FCJ/
 ├── Actor/                       # Game objects and actors (organized in subdirectories)
 │   ├── Triggers/               # Event-driven trigger implementations
 │   │   ├── BaseTrigger.cpp/h                    # Abstract base trigger with delegate system
+│   │   ├── ClearTrigger.cpp/h                   # Puzzle completion wrapper for zone system
 │   │   ├── HoldingObjectOverlapTrigger.cpp/h    # Trigger for HoldingObject overlap detection
 │   │   ├── ProjectilePassTrigger.cpp/h          # One-time projectile pass trigger
 │   │   ├── PlayerOverlapTrigger.cpp/h           # Trigger for player overlap detection
@@ -223,10 +292,13 @@ Source/FCJ/
 │   │   ├── Turret.cpp/h                         # Basic turret with firing logic
 │   │   ├── TriggeredTurret.cpp/h                # Trigger-controlled turret system
 │   │   ├── MovingDoor.cpp/h                     # Animated upward-opening door
-│   │   └── TriggeredDoor.cpp/h                  # Two-trigger AND logic door system
+│   │   ├── TriggeredDoor.cpp/h                  # Two-trigger AND logic door system
+│   │   └── ClearDoor.cpp/h                      # Zone-completion door system
 │   ├── Volumes/                # Volume-based game mechanics
 │   │   ├── ProjectileVolume.cpp/h               # Spawns and manages projectiles
-│   │   └── DebuffVolume.cpp/h                   # Applies debuffs to players in volume
+│   │   ├── DebuffVolume.cpp/h                   # Applies debuffs to players in volume
+│   │   ├── RespawnVolume.cpp/h                  # Kill volumes with visual spawn points
+│   │   └── ZoneVolume.cpp/h                     # Puzzle zone tracking and completion
 │   └── Objects/                # Interactive game objects
 │       ├── WallJumpObject.cpp/h                 # Wall surfaces for wall jumping
 │       ├── HoldingObject.cpp/h                  # Objects grabbable by BiteCat
@@ -240,7 +312,8 @@ Source/FCJ/
     ├── MultiSessionWidget.cpp/h # Session creation and browser
     ├── LobbyWidget.cpp/h       # Pre-game lobby with role selection
     ├── SettingsWidget.cpp/h    # Settings configuration UI
-    └── ESCWidget.cpp/h         # In-game pause menu with resume/main menu/exit options
+    ├── ESCWidget.cpp/h         # In-game pause menu with resume/main menu/exit options
+    └── LoadingWidget.cpp/h     # Multi-state loading screen
 ```
 
 ### Content Structure

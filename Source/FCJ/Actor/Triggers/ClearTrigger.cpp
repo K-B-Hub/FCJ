@@ -66,6 +66,14 @@ void AClearTrigger::BeginPlay()
 void AClearTrigger::OnRep_IsCleared()
 {
 	UE_LOG(LogTemp, Warning, TEXT("[ClearTrigger] %s OnRep_IsCleared - bIsCleared: %d"), *GetName(), bIsCleared);
+
+	// 클리어되었을 때 BaseTrigger의 오버레이 머테리얼을 Active 상태로 잠금 (클라이언트에서도 동기화)
+	if (bIsCleared && CachedTrigger)
+	{
+		CachedTrigger->LockOverlayMaterial(true);
+		UE_LOG(LogTemp, Warning, TEXT("[ClearTrigger] %s - Locked trigger material to Active state (Client)"), *GetName());
+	}
+
 	// 클라이언트에서 클리어 상태 변경 시 델리게이트 브로드캐스트
 	OnClearStateChanged.Broadcast(bIsCleared);
 }
@@ -84,6 +92,13 @@ void AClearTrigger::OnTriggerStateChangedCallback(bool bNewState)
 	{
 		bIsCleared = bNewState;
 		UE_LOG(LogTemp, Warning, TEXT("[ClearTrigger] %s - Clear state changed to %d! Broadcasting delegate"), *GetName(), bIsCleared);
+
+		// 클리어되었을 때 BaseTrigger의 오버레이 머테리얼을 Active 상태로 잠금
+		if (bIsCleared && CachedTrigger)
+		{
+			CachedTrigger->LockOverlayMaterial(true);
+			UE_LOG(LogTemp, Warning, TEXT("[ClearTrigger] %s - Locked trigger material to Active state"), *GetName());
+		}
 
 		// 서버에서 델리게이트 브로드캐스트
 		OnClearStateChanged.Broadcast(bIsCleared);

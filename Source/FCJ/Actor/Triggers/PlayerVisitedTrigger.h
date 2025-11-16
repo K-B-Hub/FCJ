@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Actor/Triggers/BaseTrigger.h"
-#include "Components/BoxComponent.h"
 #include "PlayerVisitedTrigger.generated.h"
 
 class ACatBase;
@@ -24,10 +23,6 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-
-	// 트리거 영역
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Components)
-	UBoxComponent* TriggerBox;
 
 	// 플레이어가 방문했는지 여부
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Trigger State")

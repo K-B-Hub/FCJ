@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Actor/Triggers/BaseTrigger.h"
-#include "Components/BoxComponent.h"
 #include "HoldingObjectOverlapTrigger.generated.h"
 
 class AHoldingObject;
@@ -24,10 +23,6 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-
-	// 트리거 영역
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Components)
-	UBoxComponent* TriggerBox;
 
 	// 오버랩된 HoldingObject 목록
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Trigger State")

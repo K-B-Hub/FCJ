@@ -2,23 +2,19 @@
 
 #include "Actor/Triggers/HoldingObjectOverlapTrigger.h"
 #include "Actor/Objects/HoldingObject.h"
-#include "Components/BoxComponent.h"
 
 AHoldingObjectOverlapTrigger::AHoldingObjectOverlapTrigger()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	// 트리거 박스 생성
-	TriggerBox = CreateDefaultSubobject<UBoxComponent>(TEXT("TriggerBox"));
-	TriggerBox->SetBoxExtent(FVector(100.0f, 100.0f, 100.0f));
-	TriggerBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	TriggerBox->SetCollisionObjectType(ECollisionChannel::ECC_WorldStatic);
-	TriggerBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
-	TriggerBox->SetGenerateOverlapEvents(true);
-	RootComponent = TriggerBox;
-
-	TriggerBox->OnComponentBeginOverlap.AddDynamic(this, &AHoldingObjectOverlapTrigger::OnTriggerBeginOverlap);
-	TriggerBox->OnComponentEndOverlap.AddDynamic(this, &AHoldingObjectOverlapTrigger::OnTriggerEndOverlap);
+	// 베이스 클래스에서 생성된 TriggerBox의 collision 설정 조정
+	// (HoldingObjectOverlapTrigger는 모든 채널에 대해 Overlap 응답)
+	if (TriggerBox)
+	{
+		TriggerBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
+		TriggerBox->OnComponentBeginOverlap.AddDynamic(this, &AHoldingObjectOverlapTrigger::OnTriggerBeginOverlap);
+		TriggerBox->OnComponentEndOverlap.AddDynamic(this, &AHoldingObjectOverlapTrigger::OnTriggerEndOverlap);
+	}
 }
 
 void AHoldingObjectOverlapTrigger::BeginPlay()

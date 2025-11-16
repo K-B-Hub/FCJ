@@ -28,15 +28,15 @@ protected:
 	virtual void BeginPlay() override;
 
 	// 루트 컴포넌트
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Components)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Components)
 	USceneComponent* RootSceneComponent;
 
 	// Zone 자식 액터 컴포넌트 (Blueprint에서 위치/회전 조절 가능)
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Components, meta = (ToolTip = "Zone 액터 컴포넌트 - Blueprint에서 Transform 조절 가능"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Components, meta = (ToolTip = "Zone 액터 컴포넌트 - Blueprint에서 Transform 조절 가능"))
 	UChildActorComponent* ZoneComponent;
 
 	// 문 자식 액터 컴포넌트 (Blueprint에서 위치/회전 조절 가능)
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Components, meta = (ToolTip = "문 액터 컴포넌트 - Blueprint에서 Transform 조절 가능"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Components, meta = (ToolTip = "문 액터 컴포넌트 - Blueprint에서 Transform 조절 가능"))
 	UChildActorComponent* DoorComponent;
 	
 	// 구역 번호 (낮은 번호일수록 이전 구역)
