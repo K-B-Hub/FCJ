@@ -323,8 +323,9 @@ Source/FCJ/
 - **GameMode/**: Cooperative game mode configurations
   - BP_MultiGameMode: Main cooperative platformer mode
 - **PlayerCharacter/**: Specialized cat character Blueprints
-  - BP_AttackCat: Combat specialist with barrier-breaking abilities
-  - BP_BiteCat: Agility specialist with climbing/support abilities
+  - BP_AttackCat: Combat specialist with parrying abilities
+  - BP_BiteCat: Object manipulation specialist with charge-throw mechanics
+  - **CRITICAL**: Both must have ParkourMontage set in Blueprint or parkour will fail with "ParkourMontage is NULL" error
 - **PlayerController/**: Platformer-optimized controller setups
 - **Widget/**: Cooperative game UI elements
 - **Levels/**: Cooperative platformer levels and test environments
@@ -544,6 +545,33 @@ int32 GetPlayerRole(const FString& PlayerNetId) const;                   // Quer
   - Multicast ensures animation plays on all clients simultaneously
   - Timer-based completion callbacks only execute on server authority
 
+## Critical Implementation Details
+
+### Parkour System Debugging
+When parkour is not working, check the following in order:
+1. **ParkourMontage Assignment**: Verify ParkourMontage is set in Blueprint (BP_AttackCat/BP_BiteCat)
+2. **Collision Settings**: Static meshes must have:
+   - Collision Enabled: QueryOnly or QueryAndPhysics
+   - Object Type: WorldStatic OR WorldDynamic
+   - Generate Overlap Events: Enabled (if not using direct queries)
+3. **Box Positioning**: In editor, enable visibility for ParkourLowerBox and ParkourUpperBox to verify placement
+4. **Logs**: Search for `[PARKOUR]` in output log to trace detection failures
+
+### ChildActorComponent Networking Anti-Pattern
+**NEVER use Server RPCs with ChildActorComponent-spawned actors** - they lack owning connections and cause "No owning connection" warnings.
+```cpp
+// WRONG - Will fail with ChildActorComponent
+UFUNCTION(Server, Reliable)
+void ServerActivate();
+
+// CORRECT - Use direct function calls with authority check
+void SetActive(bool bActive) {
+    if (!HasAuthority()) return;
+    // Server logic here
+}
+```
+Applies to: ATurret in TriggeredTurret, ABaseTrigger in composite actors, AMovingDoor in door systems.
+
 ## Technical Implementation Notes
 
 ### Platformer-Optimized Camera System
@@ -575,13 +603,18 @@ int32 GetPlayerRole(const FString& PlayerNetId) const;                   // Quer
 
 - **Parkour System**: Box collision-based root motion climbing for waist-level obstacles
   - **Dual Box Detection**: Uses two UBoxComponent instances for precise parkour detection
-    - ParkourLowerBox: Must overlap with StaticMesh objects (something to climb)
-    - ParkourUpperBox: Must NOT overlap with StaticMesh objects (clear space above)
+    - ParkourLowerBox: Must overlap with objects (something to climb)
+    - ParkourUpperBox: Must NOT overlap with objects (clear space above)
   - **Collision Configuration**:
-    - ECollisionChannel::ECC_WorldStatic overlap response only
+    - Responds to both ECC_WorldStatic AND ECC_WorldDynamic channels
     - ECC_Pawn set to ECR_Ignore to prevent character self-overlap
     - QueryOnly collision enabled, no physics interaction
-  - **Detection Logic**: Uses GetOverlappingActors() with UpdateOverlaps() for reliable detection
+  - **Hybrid Detection Logic** (CatBase.cpp:363-535):
+    - Primary: `GetOverlappingActors()` with `UpdateOverlaps()` for overlap-enabled objects
+    - Fallback: Direct `OverlapMultiByChannel()` queries for both WorldStatic and WorldDynamic channels
+    - Merges results from both methods to catch all valid parkour targets
+    - **Critical**: Always runs direct queries even when GetOverlappingActors succeeds (some static meshes have overlap events disabled)
+  - **StaticMesh Validation**: Only accepts actors with UStaticMeshComponent (filters out volumes/triggers)
   - **Movement Mode Management**: Switches to Flying mode during parkour for Z-axis root motion
   - **Root Motion Priority**: Pure animation-driven movement without Motion Warping dependency
   - **Jump Priority**: Parkour → Wall Jump → Normal Jump execution order
@@ -589,6 +622,7 @@ int32 GetPlayerRole(const FString& PlayerNetId) const;                   // Quer
     - Maintains relative position when parkour target is moving (MovingPlatform, RotationPlatform)
     - Detaches on completion to restore independent movement
   - **Networking**: Server manages state transitions, multicast synchronizes animations with proper root motion replication
+  - **Common Issue**: World-placed static meshes may need "Generate Overlap Events" enabled or use collision preset other than "Default"
 
 - **Object Interaction Framework**: Complete holding/carrying system for puzzle mechanics
   - Weight-based interaction limits and physics integration

@@ -5,6 +5,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerStart.h"
 #include "Components/BoxComponent.h"
 #include "Actor/Objects/WallJumpObject.h"
 #include "Engine/World.h"
@@ -64,6 +65,7 @@ ACatBase::ACatBase()
 	ParkourLowerBox->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 	ParkourLowerBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	ParkourLowerBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Overlap);
+	ParkourLowerBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Overlap); // WorldDynamic도 감지
 	ParkourLowerBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore); // 캐릭터와는 오버랩하지 않음
 	ParkourLowerBox->SetGenerateOverlapEvents(true);
 	ParkourLowerBox->SetHiddenInGame(false);
@@ -77,6 +79,7 @@ ACatBase::ACatBase()
 	ParkourUpperBox->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 	ParkourUpperBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	ParkourUpperBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Overlap);
+	ParkourUpperBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Overlap); // WorldDynamic도 감지
 	ParkourUpperBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore); // 캐릭터와는 오버랩하지 않음
 	ParkourUpperBox->SetGenerateOverlapEvents(true);
 	ParkourUpperBox->SetHiddenInGame(false);
@@ -105,6 +108,7 @@ void ACatBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetime
 	DOREPLIFETIME(ACatBase, CurrentParkourActor);
 	DOREPLIFETIME(ACatBase, bIsMontageePlaying);
 	DOREPLIFETIME(ACatBase, CurrentSpeedModifier);
+	DOREPLIFETIME(ACatBase, InitialSpawnLocation);
 }
 
 // Called when the game starts or when spawned
@@ -120,6 +124,13 @@ void ACatBase::BeginPlay()
 
 	// Apply Blueprint settings when the game starts
 	ApplyBlueprintSettings();
+
+	// 초기 스폰 위치 저장 (리스폰 시 사용)
+	if (HasAuthority())
+	{
+		InitialSpawnLocation = GetActorLocation();
+		UE_LOG(LogTemp, Log, TEXT("[SPAWN] Initial spawn location saved: %s"), *InitialSpawnLocation.ToString());
+	}
 }
 
 // Called every frame
@@ -137,6 +148,9 @@ void ACatBase::Tick(float DeltaTime)
 	{
 		PerformParkour();
 	}
+
+	// Check for fall death
+	CheckFallDeath();
 }
 
 // Called to bind functionality to input
@@ -315,11 +329,13 @@ void ACatBase::Jump()
 	// 파쿠르 중이면 점프 무시
 	if (bIsPerformingParkour)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[PARKOUR] Jump ignored - already performing parkour"));
 		return;
 	}
 
 	// 파쿠르 시도 변수 on
 	bTryingToParkour = true;
+	UE_LOG(LogTemp, Log, TEXT("[PARKOUR] Jump pressed - trying parkour (bTryingToParkour = true)"));
 
 	// 파쿠르가 안되면 다른 동작들 시도
 	if (!GetCharacterMovement()->IsMovingOnGround())
@@ -360,20 +376,30 @@ AActor* ACatBase::DetectParkourTarget() const
 	TArray<AActor*> UpperOverlappingActors;
 	ParkourUpperBox->GetOverlappingActors(UpperOverlappingActors, AActor::StaticClass());
 
-	// 대안: 박스 위치에서 직접 오버랩 테스트
-	if (LowerOverlappingActors.Num() == 0 && UpperOverlappingActors.Num() == 0)
+	UE_LOG(LogTemp, Log, TEXT("[PARKOUR] DetectParkourTarget - LowerBox overlaps: %d, UpperBox overlaps: %d"),
+		LowerOverlappingActors.Num(), UpperOverlappingActors.Num());
+
+	// 항상 박스 위치에서 직접 오버랩 테스트 실행 (GetOverlappingActors가 놓칠 수 있는 액터 감지)
 	{
+		UE_LOG(LogTemp, Log, TEXT("[PARKOUR] Performing direct collision query to find all potential targets"));
+
 		FVector LowerBoxLocation = ParkourLowerBox->GetComponentLocation();
 		FVector UpperBoxLocation = ParkourUpperBox->GetComponentLocation();
 		FVector LowerBoxExtent = ParkourLowerBox->GetScaledBoxExtent();
 		FVector UpperBoxExtent = ParkourUpperBox->GetScaledBoxExtent();
 
-		// 하단 박스 위치에서 오버랩 테스트
+		UE_LOG(LogTemp, Log, TEXT("[PARKOUR] LowerBox - Location: %s, Extent: %s"),
+			*LowerBoxLocation.ToString(), *LowerBoxExtent.ToString());
+		UE_LOG(LogTemp, Log, TEXT("[PARKOUR] UpperBox - Location: %s, Extent: %s"),
+			*UpperBoxLocation.ToString(), *UpperBoxExtent.ToString());
+
+		// 하단 박스 위치에서 오버랩 테스트 (WorldStatic + WorldDynamic)
 		TArray<FOverlapResult> LowerOverlapResults;
 		FCollisionQueryParams LowerQueryParams;
 		LowerQueryParams.AddIgnoredActor(this);
 
-		bool bLowerHit = GetWorld()->OverlapMultiByChannel(
+		// WorldStatic 채널로 먼저 체크
+		GetWorld()->OverlapMultiByChannel(
 			LowerOverlapResults,
 			LowerBoxLocation,
 			FQuat::Identity,
@@ -382,12 +408,29 @@ AActor* ACatBase::DetectParkourTarget() const
 			LowerQueryParams
 		);
 
-		// 상단 박스 위치에서도 오버랩 테스트
+		// WorldDynamic 채널로도 체크하여 결과에 추가
+		TArray<FOverlapResult> LowerDynamicResults;
+		GetWorld()->OverlapMultiByChannel(
+			LowerDynamicResults,
+			LowerBoxLocation,
+			FQuat::Identity,
+			ECC_WorldDynamic,
+			FCollisionShape::MakeBox(LowerBoxExtent),
+			LowerQueryParams
+		);
+		LowerOverlapResults.Append(LowerDynamicResults);
+
+		bool bLowerHit = LowerOverlapResults.Num() > 0;
+		UE_LOG(LogTemp, Log, TEXT("[PARKOUR] Direct query - Lower hits: %d (WorldStatic + WorldDynamic)"),
+			LowerOverlapResults.Num());
+
+		// 상단 박스 위치에서도 오버랩 테스트 (WorldStatic + WorldDynamic)
 		TArray<FOverlapResult> UpperOverlapResults;
 		FCollisionQueryParams UpperQueryParams;
 		UpperQueryParams.AddIgnoredActor(this);
 
-		bool bUpperHit = GetWorld()->OverlapMultiByChannel(
+		// WorldStatic 채널로 먼저 체크
+		GetWorld()->OverlapMultiByChannel(
 			UpperOverlapResults,
 			UpperBoxLocation,
 			FQuat::Identity,
@@ -396,13 +439,33 @@ AActor* ACatBase::DetectParkourTarget() const
 			UpperQueryParams
 		);
 
+		// WorldDynamic 채널로도 체크하여 결과에 추가
+		TArray<FOverlapResult> UpperDynamicResults;
+		GetWorld()->OverlapMultiByChannel(
+			UpperDynamicResults,
+			UpperBoxLocation,
+			FQuat::Identity,
+			ECC_WorldDynamic,
+			FCollisionShape::MakeBox(UpperBoxExtent),
+			UpperQueryParams
+		);
+		UpperOverlapResults.Append(UpperDynamicResults);
+
+		bool bUpperHit = UpperOverlapResults.Num() > 0;
+
+		UE_LOG(LogTemp, Log, TEXT("[PARKOUR] Direct query - Upper hits: %d"), UpperOverlapResults.Num());
+
 		// 하단에는 있지만 상단에는 없는 액터 찾기
 		if (bLowerHit)
 		{
 			for (const FOverlapResult& LowerResult : LowerOverlapResults)
 			{
 				if (!LowerResult.GetActor() || !LowerResult.GetActor()->FindComponentByClass<UStaticMeshComponent>())
+				{
+					UE_LOG(LogTemp, Log, TEXT("[PARKOUR] Skipping actor (no StaticMeshComponent): %s"),
+						LowerResult.GetActor() ? *LowerResult.GetActor()->GetName() : TEXT("NULL"));
 					continue;
+				}
 
 				// 이 액터가 상단에도 있는지 확인
 				bool bFoundInUpper = false;
@@ -420,10 +483,36 @@ AActor* ACatBase::DetectParkourTarget() const
 
 				if (!bFoundInUpper)
 				{
+					UE_LOG(LogTemp, Warning, TEXT("[PARKOUR] FOUND TARGET via direct query: %s"),
+						*LowerResult.GetActor()->GetName());
 					return LowerResult.GetActor();
+				}
+				else
+				{
+					UE_LOG(LogTemp, Log, TEXT("[PARKOUR] Actor found in both boxes (rejected): %s"),
+						*LowerResult.GetActor()->GetName());
 				}
 			}
 		}
+
+		// Direct query 결과를 GetOverlappingActors 결과에 추가
+		for (const FOverlapResult& LowerResult : LowerOverlapResults)
+		{
+			if (LowerResult.GetActor() && !LowerOverlappingActors.Contains(LowerResult.GetActor()))
+			{
+				LowerOverlappingActors.Add(LowerResult.GetActor());
+			}
+		}
+		for (const FOverlapResult& UpperResult : UpperOverlapResults)
+		{
+			if (UpperResult.GetActor() && !UpperOverlappingActors.Contains(UpperResult.GetActor()))
+			{
+				UpperOverlappingActors.Add(UpperResult.GetActor());
+			}
+		}
+
+		UE_LOG(LogTemp, Log, TEXT("[PARKOUR] After direct query - Total LowerBox: %d, Total UpperBox: %d"),
+			LowerOverlappingActors.Num(), UpperOverlappingActors.Num());
 	}
 
 	// 하단 박스에는 오버랩되지만 상단 박스에는 오버랩되지 않는 액터 찾기
@@ -432,6 +521,8 @@ AActor* ACatBase::DetectParkourTarget() const
 		// StaticMeshComponent가 있는지 확인 (캐릭터는 콜리전 설정으로 이미 제외됨)
 		if (!LowerActor->FindComponentByClass<UStaticMeshComponent>())
 		{
+			UE_LOG(LogTemp, Log, TEXT("[PARKOUR] Skipping overlapping actor (no StaticMeshComponent): %s"),
+				*LowerActor->GetName());
 			continue;
 		}
 
@@ -448,10 +539,18 @@ AActor* ACatBase::DetectParkourTarget() const
 
 		if (!bIsInUpperBox)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("[PARKOUR] FOUND TARGET via GetOverlappingActors: %s"),
+				*LowerActor->GetName());
 			return LowerActor;
+		}
+		else
+		{
+			UE_LOG(LogTemp, Log, TEXT("[PARKOUR] Actor found in both boxes (rejected): %s"),
+				*LowerActor->GetName());
 		}
 	}
 
+	UE_LOG(LogTemp, Warning, TEXT("[PARKOUR] No valid parkour target found"));
 	return nullptr;
 }
 
@@ -460,32 +559,43 @@ bool ACatBase::CanPerformParkour() const
 	// 이미 파쿠르 중이거나 다른 몽타주 플레이 중이면 불가능
 	if (bIsPerformingParkour || bIsMontageePlaying)
 	{
+		UE_LOG(LogTemp, Log, TEXT("[PARKOUR] CanPerformParkour: false (bIsPerformingParkour=%d, bIsMontageePlaying=%d)"),
+			bIsPerformingParkour, bIsMontageePlaying);
 		return false;
 	}
 
 	// 파쿠르 몽타주가 설정되어 있는지 확인
 	if (!ParkourMontage)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[PARKOUR] CanPerformParkour: false (ParkourMontage is NULL)"));
 		return false;
 	}
 
 	// 전방에 파쿠르 가능한 오브젝트가 있는지 확인
 	AActor* ParkourTarget = DetectParkourTarget();
-	return ParkourTarget != nullptr;
+	bool bCanPerform = ParkourTarget != nullptr;
+	UE_LOG(LogTemp, Log, TEXT("[PARKOUR] CanPerformParkour: %s (Target: %s)"),
+		bCanPerform ? TEXT("true") : TEXT("false"),
+		ParkourTarget ? *ParkourTarget->GetName() : TEXT("NULL"));
+	return bCanPerform;
 }
 
 void ACatBase::PerformParkour()
 {
 	if (!CanPerformParkour())
 	{
+		UE_LOG(LogTemp, Log, TEXT("[PARKOUR] PerformParkour: Cannot perform parkour"));
 		return;
 	}
 
 	AActor* ParkourTarget = DetectParkourTarget();
 	if (!ParkourTarget)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[PARKOUR] PerformParkour: No parkour target found"));
 		return;
 	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[PARKOUR] PerformParkour: Starting parkour to target %s"), *ParkourTarget->GetName());
 
 	// If we're the server, execute directly; otherwise call server RPC
 	if (HasAuthority())
@@ -503,8 +613,13 @@ void ACatBase::ServerPerformParkour_Implementation(AActor* ParkourTarget)
 	// Server authoritative parkour logic
 	if (!ParkourTarget || !CanPerformParkour())
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[PARKOUR] ServerPerformParkour: Failed validation (Target=%s, CanPerform=%d)"),
+			ParkourTarget ? *ParkourTarget->GetName() : TEXT("NULL"), CanPerformParkour());
 		return;
 	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[PARKOUR] ServerPerformParkour: Starting server-side parkour to %s"),
+		*ParkourTarget->GetName());
 
 	// Set parkour state (replicated)
 	bIsPerformingParkour = true;
@@ -673,4 +788,68 @@ FVector ACatBase::CalculateParkourTargetLocationPrecise(AActor* Actor) const
 	TargetLocation.Z = ActorOrigin.Z + ActorBoxExtent.Z + 10.0f;
 
 	return TargetLocation;
+}
+
+void ACatBase::CheckFallDeath()
+{
+	// 현재 z 좌표가 임계값 이하인지 확인
+	if (GetActorLocation().Z <= FallDeathZLevel)
+	{
+		// 서버에서만 리스폰 처리 또는 클라이언트는 서버에 요청
+		if (HasAuthority())
+		{
+			ServerRespawnCharacter_Implementation();
+		}
+		else
+		{
+			ServerRespawnCharacter();
+		}
+	}
+}
+
+void ACatBase::ServerRespawnCharacter_Implementation()
+{
+	// 서버에서만 실행되는지 확인
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	// 저장된 초기 스폰 위치가 있는지 확인
+	if (!InitialSpawnLocation.IsZero())
+	{
+		// 저장된 초기 스폰 위치로 캐릭터 텔레포트
+		SetActorLocation(InitialSpawnLocation, false, nullptr, ETeleportType::TeleportPhysics);
+
+		// 캐릭터의 속도 초기화 (낙하 속도 제거)
+		if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
+		{
+			MovementComp->Velocity = FVector::ZeroVector;
+		}
+
+		UE_LOG(LogTemp, Warning, TEXT("[RESPAWN] Character respawned at initial spawn location: %s"), *InitialSpawnLocation.ToString());
+	}
+	else
+	{
+		// 초기 위치가 저장되지 않은 경우, PlayerStart를 찾아서 리스폰 (fallback)
+		AActor* PlayerStart = UGameplayStatics::GetActorOfClass(GetWorld(), APlayerStart::StaticClass());
+
+		if (PlayerStart)
+		{
+			FVector SpawnLocation = PlayerStart->GetActorLocation();
+			SetActorLocation(SpawnLocation, false, nullptr, ETeleportType::TeleportPhysics);
+
+			// 캐릭터의 속도 초기화
+			if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
+			{
+				MovementComp->Velocity = FVector::ZeroVector;
+			}
+
+			UE_LOG(LogTemp, Warning, TEXT("[RESPAWN] Character respawned at fallback PlayerStart: %s"), *SpawnLocation.ToString());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("[RESPAWN] No initial spawn location and no PlayerStart found in level!"));
+		}
+	}
 }

@@ -103,6 +103,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wall Jump Settings", meta = (ToolTip = "착지하기 전까지 연속으로 할 수 있는 벽점프 횟수를 설정합니다"))
 	int32 MaxWallJumpsInAir = 1;
 
+	// Fall Death Settings
+	// 추락으로 간주되는 z 좌표 임계값 (이 값 이하로 떨어지면 리스폰)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fall Death Settings", meta = (ToolTip = "캐릭터가 이 z 좌표 이하로 떨어지면 플레이어 스타트 지점으로 리스폰됩니다"))
+	float FallDeathZLevel = -1500.0f;
+
+	// 각 플레이어의 초기 스폰 위치 저장 (리스폰 시 사용)
+	UPROPERTY(Replicated)
+	FVector InitialSpawnLocation;
+
 	// Special Action Settings
 	// 특수 행동 감지 영역의 크기 (BiteCat: 잡기 범위, AttackCat: 공격/패링 범위)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Special Action Settings", meta = (ToolTip = "특수 행동(잡기/공격)이 가능한 박스 영역의 크기를 설정합니다"))
@@ -251,4 +260,11 @@ private:
 
 	//실제 속도 업데이트
 	void UpdateMovementSpeed(float Multiplier);
+
+	// 추락 감지 및 리스폰 처리
+	void CheckFallDeath();
+
+	// 서버에서 캐릭터 리스폰 처리
+	UFUNCTION(Server, Reliable, Category = "Respawn")
+	void ServerRespawnCharacter();
 };
