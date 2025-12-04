@@ -65,8 +65,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics Settings", meta = (ToolTip = "중력 스케일 값입니다. 1.0이 기본 중력입니다"))
 	float GravityScale = 1.0f;
 
+	// 리스폰 관련 설정
+	UPROPERTY()
+	FVector InitialLocation;
 
-public:	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Respawn Settings", meta = (ToolTip = "이 높이 이하로 떨어지면 리스폰됩니다"))
+	float RespawnZThreshold = -500.0f;
+
+public:
 	virtual void Tick(float DeltaTime) override;
 
 	// 잡기 관련 함수들
@@ -91,5 +97,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Holding")
 	ABiteCat* GetHoldingCat() const { return HoldingCat; }
+
+	// 리스폰 함수 (RespawnVolume에서 호출)
+	UFUNCTION(BlueprintCallable, Category = "Respawn")
+	void RespawnToInitialLocation();
 
 };

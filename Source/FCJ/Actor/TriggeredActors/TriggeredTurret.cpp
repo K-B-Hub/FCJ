@@ -4,6 +4,8 @@
 #include "Actor/TriggeredActors/Turret.h"
 #include "Actor/Triggers/BaseTrigger.h"
 #include "Components/ChildActorComponent.h"
+#include "Components/BoxComponent.h"
+#include "Engine/OverlapResult.h"
 
 ATriggeredTurret::ATriggeredTurret()
 {
@@ -19,35 +21,82 @@ ATriggeredTurret::ATriggeredTurret()
 	TurretComponent->SetupAttachment(RootSceneComponent);
 	// Turret 클래스는 Blueprint에서 설정 (Child Actor Class)
 
-	// Trigger 자식 액터 컴포넌트 생성
-	TriggerComponent = CreateDefaultSubobject<UChildActorComponent>(TEXT("TriggerComponent"));
-	TriggerComponent->SetupAttachment(RootSceneComponent);
-	// Trigger 클래스는 Blueprint에서 설정 (Child Actor Class)
+	// 트리거 감지용 박스 컴포넌트 생성
+	TriggerDetectionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("TriggerDetectionBox"));
+	TriggerDetectionBox->SetupAttachment(RootSceneComponent);
+	TriggerDetectionBox->SetBoxExtent(FVector(200.0f, 200.0f, 200.0f)); // 기본 크기
+	TriggerDetectionBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	TriggerDetectionBox->SetCollisionResponseToAllChannels(ECR_Ignore);
+	TriggerDetectionBox->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Overlap);
+	TriggerDetectionBox->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
 
-	bLastTriggerState = false;
 	CachedTurret = nullptr;
-	CachedTrigger = nullptr;
 }
 
 void ATriggeredTurret::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 자식 액터들을 캐시
+	// Turret 액터 캐시
 	if (TurretComponent)
 	{
 		CachedTurret = Cast<ATurret>(TurretComponent->GetChildActor());
 	}
 
-	if (TriggerComponent)
+	// TriggerDetectionBox와 겹치는 모든 BaseTrigger 찾기
+	if (TriggerDetectionBox)
 	{
-		CachedTrigger = Cast<ABaseTrigger>(TriggerComponent->GetChildActor());
-	}
+		// 오버랩 정보를 강제로 업데이트
+		TriggerDetectionBox->UpdateOverlaps();
 
-	// 트리거 델리게이트 바인딩
-	if (CachedTrigger)
-	{
-		CachedTrigger->OnTriggerStateChanged.AddDynamic(this, &ATriggeredTurret::OnTriggerStateChangedCallback);
+		// 방법 1: GetOverlappingActors 사용
+		TArray<AActor*> OverlappingActors;
+		TriggerDetectionBox->GetOverlappingActors(OverlappingActors, ABaseTrigger::StaticClass());
+
+		for (AActor* Actor : OverlappingActors)
+		{
+			if (ABaseTrigger* Trigger = Cast<ABaseTrigger>(Actor))
+			{
+				ConnectedTriggers.AddUnique(Trigger);
+			}
+		}
+
+		// 방법 2: 직접 오버랩 쿼리 사용 (GetOverlappingActors가 실패할 경우 대비)
+		TArray<FOverlapResult> OverlapResults;
+		FCollisionQueryParams QueryParams;
+		QueryParams.AddIgnoredActor(this);
+
+		bool bOverlap = GetWorld()->OverlapMultiByChannel(
+			OverlapResults,
+			TriggerDetectionBox->GetComponentLocation(),
+			TriggerDetectionBox->GetComponentQuat(),
+			ECC_WorldStatic,
+			FCollisionShape::MakeBox(TriggerDetectionBox->GetScaledBoxExtent()),
+			QueryParams
+		);
+
+		if (bOverlap)
+		{
+			for (const FOverlapResult& Result : OverlapResults)
+			{
+				if (ABaseTrigger* Trigger = Cast<ABaseTrigger>(Result.GetActor()))
+				{
+					ConnectedTriggers.AddUnique(Trigger);
+				}
+			}
+		}
+
+		// 델리게이트 바인딩
+		for (ABaseTrigger* Trigger : ConnectedTriggers)
+		{
+			if (Trigger)
+			{
+				Trigger->OnTriggerStateChanged.AddDynamic(this, &ATriggeredTurret::OnTriggerStateChangedCallback);
+				UE_LOG(LogTemp, Log, TEXT("[TriggeredTurret] Connected to trigger: %s"), *Trigger->GetName());
+			}
+		}
+
+		UE_LOG(LogTemp, Warning, TEXT("[TriggeredTurret] Total found %d connected triggers"), ConnectedTriggers.Num());
 
 		// 초기 트리거 상태 확인
 		if (bAutoCheckTrigger)
@@ -59,29 +108,18 @@ void ATriggeredTurret::BeginPlay()
 
 void ATriggeredTurret::CheckTriggerState()
 {
-	if (!CachedTrigger || !CachedTurret)
+	if (!CachedTurret)
 		return;
 
-	bool bCurrentTriggerState = CachedTrigger->IsTriggerActive();
+	// 모든 연결된 트리거의 상태를 확인하여 포탑 활성화 여부 결정
+	bool bShouldActivate = CheckAllTriggersActive();
 
-	// 트리거 상태가 변경되었을 때만 포탑 상태 업데이트
-	if (bCurrentTriggerState != bLastTriggerState)
-	{
-		bLastTriggerState = bCurrentTriggerState;
+	// 포탑 상태 업데이트
+	CachedTurret->SetActive(bShouldActivate);
 
-		// 트리거 상태에 따라 포탑 활성화/비활성화
-		if (bCurrentTriggerState)
-		{
-			// 트리거가 활성화되면 포탑을 활성화 모드로 전환
-			// Turret 자체에서 플레이어 감지 시 발사 시작
-			CachedTurret->SetActive(true);
-		}
-		else
-		{
-			// 트리거가 비활성화되면 포탑도 즉시 비활성화
-			CachedTurret->SetActive(false);
-		}
-	}
+	UE_LOG(LogTemp, Log, TEXT("[TriggeredTurret] CheckTriggerState: AllActive=%s, TurretActive=%s"),
+		bShouldActivate ? TEXT("True") : TEXT("False"),
+		CachedTurret->IsActive() ? TEXT("True") : TEXT("False"));
 }
 
 void ATriggeredTurret::OnTriggerStateChangedCallback(bool bNewState)
@@ -89,8 +127,34 @@ void ATriggeredTurret::OnTriggerStateChangedCallback(bool bNewState)
 	if (!CachedTurret)
 		return;
 
-	// 델리게이트를 통해 트리거 상태 변경 이벤트를 받으면 즉시 포탑 상태 업데이트
-	bLastTriggerState = bNewState;
-	CachedTurret->SetActive(bNewState);
+	// 트리거 상태 변경 시 모든 트리거 상태를 재확인
+	bool bShouldActivate = CheckAllTriggersActive();
+	CachedTurret->SetActive(bShouldActivate);
+
+	UE_LOG(LogTemp, Log, TEXT("[TriggeredTurret] OnTriggerStateChanged: NewState=%s, AllActive=%s"),
+		bNewState ? TEXT("True") : TEXT("False"),
+		bShouldActivate ? TEXT("True") : TEXT("False"));
+}
+
+bool ATriggeredTurret::CheckAllTriggersActive() const
+{
+	// 연결된 트리거가 없으면 비활성화
+	if (ConnectedTriggers.Num() == 0)
+	{
+		return false;
+	}
+
+	// 모든 트리거가 활성화되어 있는지 확인
+	for (const ABaseTrigger* Trigger : ConnectedTriggers)
+	{
+		if (Trigger && !Trigger->IsTriggerActive())
+		{
+			// 하나라도 비활성화되어 있으면 false 반환
+			return false;
+		}
+	}
+
+	// 모든 트리거가 활성화되어 있으면 true 반환
+	return true;
 }
 

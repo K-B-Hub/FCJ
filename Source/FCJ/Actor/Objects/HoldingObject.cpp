@@ -54,6 +54,9 @@ void AHoldingObject::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// 시작 위치 저장
+	InitialLocation = GetActorLocation();
+
 	//Replicate 설정
 	SetReplicateMovement(true);
 	if (MeshComponent)
@@ -81,6 +84,7 @@ void AHoldingObject::BeginPlay()
 			MeshComponent->SetNotifyRigidBodyCollision(true); // 충돌 이벤트 활성화
 			MeshComponent->GetBodyInstance()->bLockXRotation = true;
 			MeshComponent->GetBodyInstance()->bLockYRotation = true;
+			MeshComponent->GetBodyInstance()->bLockZRotation = true; // Z축 회전도 잠금
 			MeshComponent->GetBodyInstance()->bLockTranslation = false;
 		}
 	}
@@ -89,6 +93,20 @@ void AHoldingObject::BeginPlay()
 void AHoldingObject::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// 항상 회전을 0,0,0으로 강제 (모든 상황에서 회전 불가)
+	SetActorRotation(FRotator::ZeroRotator);
+	if (MeshComponent)
+	{
+		MeshComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+	}
+
+	// Z축 위치 체크 (서버에서만)
+	if (HasAuthority() && GetActorLocation().Z < RespawnZThreshold)
+	{
+		RespawnToInitialLocation();
+		return; // 리스폰 후 나머지 로직 건너뛰기
+	}
 
 	// 잡힌 상태에서는 직접 위치를 고정 (물고 있는 느낌)
 	if (bIsBeingHeld && HoldingCat)
@@ -99,14 +117,13 @@ void AHoldingObject::Tick(float DeltaTime)
 								HoldingCat->GetActorRightVector() * HoldOffset.Y +
 								HoldingCat->GetActorUpVector() * HoldOffset.Z;
 
-		// 직접 위치 설정 - 물고 있는 것처럼 완전 고정
+		// 위치 설정 (회전은 위에서 이미 강제)
 		SetActorLocation(TargetLocation);
 
 		// 속도도 초기화하여 관성 제거
 		if (MeshComponent)
 		{
 			MeshComponent->SetPhysicsLinearVelocity(FVector::ZeroVector);
-			MeshComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
 		}
 	}
 	else if (!bIsBeingHeld && MeshComponent)
@@ -182,5 +199,32 @@ void AHoldingObject::OnReleased()
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("Object released from BiteCat"));
+}
+
+void AHoldingObject::RespawnToInitialLocation()
+{
+	// 서버에서만 실행
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	// 잡혀있는 상태라면 먼저 해제
+	if (bIsBeingHeld)
+	{
+		OnReleased();
+	}
+
+	// 시작 위치와 기본 회전(0,0,0)으로 리스폰
+	SetActorLocationAndRotation(InitialLocation, FRotator::ZeroRotator, false, nullptr, ETeleportType::TeleportPhysics);
+
+	// 물리 속도 초기화
+	if (MeshComponent)
+	{
+		MeshComponent->SetPhysicsLinearVelocity(FVector::ZeroVector);
+		MeshComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("HoldingObject respawned to initial location: %s"), *InitialLocation.ToString());
 }
 

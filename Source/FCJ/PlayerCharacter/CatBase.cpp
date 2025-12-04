@@ -8,6 +8,7 @@
 #include "GameFramework/PlayerStart.h"
 #include "Components/BoxComponent.h"
 #include "Actor/Objects/WallJumpObject.h"
+#include "Actor/Triggers/BaseTrigger.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "Animation/AnimMontage.h"
@@ -460,6 +461,14 @@ AActor* ACatBase::DetectParkourTarget() const
 		{
 			for (const FOverlapResult& LowerResult : LowerOverlapResults)
 			{
+				// BaseTrigger 파생 클래스는 제외
+				if (LowerResult.GetActor() && LowerResult.GetActor()->IsA(ABaseTrigger::StaticClass()))
+				{
+					UE_LOG(LogTemp, Log, TEXT("[PARKOUR] Skipping BaseTrigger: %s"),
+						*LowerResult.GetActor()->GetName());
+					continue;
+				}
+
 				if (!LowerResult.GetActor() || !LowerResult.GetActor()->FindComponentByClass<UStaticMeshComponent>())
 				{
 					UE_LOG(LogTemp, Log, TEXT("[PARKOUR] Skipping actor (no StaticMeshComponent): %s"),
@@ -518,6 +527,14 @@ AActor* ACatBase::DetectParkourTarget() const
 	// 하단 박스에는 오버랩되지만 상단 박스에는 오버랩되지 않는 액터 찾기
 	for (AActor* LowerActor : LowerOverlappingActors)
 	{
+		// BaseTrigger 파생 클래스는 제외
+		if (LowerActor->IsA(ABaseTrigger::StaticClass()))
+		{
+			UE_LOG(LogTemp, Log, TEXT("[PARKOUR] Skipping BaseTrigger: %s"),
+				*LowerActor->GetName());
+			continue;
+		}
+
 		// StaticMeshComponent가 있는지 확인 (캐릭터는 콜리전 설정으로 이미 제외됨)
 		if (!LowerActor->FindComponentByClass<UStaticMeshComponent>())
 		{

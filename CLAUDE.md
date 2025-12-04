@@ -10,6 +10,8 @@ FCJ is an Unreal Engine 5.6 cooperative platformer game featuring two independen
 
 This project uses Unreal Engine 5.6's standard build system:
 
+**IMPORTANT: Do NOT attempt to build or compile the project automatically. The user will handle all build and compilation tasks manually.**
+
 ### Development Commands
 - **Generate Project Files**: Run `UnrealBuildTool -projectfiles -project="FCJ.uproject" -game -rocket -progress`
 - **Build Game (Development)**: `UnrealBuildTool FCJ Win64 Development -Project="FCJ.uproject" -WaitMutex -FromMsBuild`
@@ -155,6 +157,12 @@ The project implements a modular dual-cat cooperative system designed for platfo
      - One-time activation (door stays open permanently)
      - Automatic delegate unbinding after door opens
 
+   - **AOneTriggeredDoor**: Single-trigger door system
+     - Contains AMovingDoor and 1 ABaseTrigger as child actors
+     - Opens when single trigger is activated
+     - One-time activation (door stays open permanently)
+     - Automatic delegate unbinding after door opens
+
 8. **Zone-Based Progression System**
    - **AZoneVolume**: Puzzle zone tracking and completion system
      - `bIsPuzzleZone`: Enables ClearTrigger tracking within zone bounds
@@ -293,6 +301,7 @@ Source/FCJ/
 │   │   ├── TriggeredTurret.cpp/h                # Trigger-controlled turret system
 │   │   ├── MovingDoor.cpp/h                     # Animated upward-opening door
 │   │   ├── TriggeredDoor.cpp/h                  # Two-trigger AND logic door system
+│   │   ├── OneTriggeredDoor.cpp/h               # Single-trigger door system
 │   │   └── ClearDoor.cpp/h                      # Zone-completion door system
 │   ├── Volumes/                # Volume-based game mechanics
 │   │   ├── ProjectileVolume.cpp/h               # Spawns and manages projectiles

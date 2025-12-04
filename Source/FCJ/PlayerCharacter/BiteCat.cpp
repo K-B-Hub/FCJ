@@ -271,8 +271,8 @@ void ABiteCat::ServerReleaseThrow_Implementation(float ChargeTime)
 
 	UE_LOG(LogTemp, Warning, TEXT("Server: Releasing throw with charge time: %.2f, force: %.2f"), ChargeTime, CalculatedForce);
 
-	// 캐릭터의 전방 방향 계산
-	FVector ForwardDirection = GetActorForwardVector();
+	// 카메라의 전방 방향 계산 (카메라가 없으면 캐릭터 방향 사용)
+	FVector ForwardDirection = CameraComponent ? CameraComponent->GetForwardVector() : GetActorForwardVector();
 
 	// 던질 방향에 약간의 위쪽 각도 추가 (포물선 궤적을 위해)
 	FVector ThrowDirection = ForwardDirection + FVector(0.0f, 0.0f, 0.3f);

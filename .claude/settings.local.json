@@ -4,7 +4,10 @@
       "Bash(dir /B \"E:\\UE5\\Project\\FCJ\\Content\\Blueprint\" 2)",
       "Bash(nul)",
       "Bash(dir /B /S E:UE5ProjectFCJContent 2)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" \"E:\\UE5\\Project\\FCJ\\FCJ.sln\" /t:Build /p:Configuration=\"Development Editor\" /p:Platform=Win64)",
+      "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" \"E:\\UE5\\Project\\FCJ\\FCJ.sln\" /t:Build \"/p:Configuration=Development Editor\" /p:Platform=Win64)",
+      "Bash(\"C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Build\\BatchFiles\\Build.bat\" FCJEditor Win64 Development \"E:\\UE5\\Project\\FCJ\\FCJ.uproject\" -WaitMutex)"
     ],
     "deny": [],
     "ask": []

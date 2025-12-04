@@ -3,6 +3,7 @@
 
 #include "Actor/Volumes/RespawnVolume.h"
 #include "PlayerCharacter/CatBase.h"
+#include "Actor/Objects/HoldingObject.h"
 #include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SceneComponent.h"
@@ -27,6 +28,7 @@ ARespawnVolume::ARespawnVolume()
 	RespawnBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	RespawnBox->SetCollisionResponseToAllChannels(ECR_Ignore);
 	RespawnBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	RespawnBox->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap); // HoldingObject 감지용
 
 	// 기본 박스 크기 설정
 	RespawnBox->SetBoxExtent(FVector(1000.0f, 1000.0f, 100.0f));
@@ -83,6 +85,14 @@ void ARespawnVolume::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor*
 		{
 			MovementComp->Velocity = FVector::ZeroVector;
 		}
+	}
+
+	// HoldingObject인지 확인
+	AHoldingObject* HoldingObj = Cast<AHoldingObject>(OtherActor);
+	if (HoldingObj)
+	{
+		// HoldingObject의 리스폰 함수 호출
+		HoldingObj->RespawnToInitialLocation();
 	}
 }
 
