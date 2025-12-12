@@ -9,8 +9,8 @@
 
 /**
  * 이동하는 문 액터
- * 외부에서 OpenDoor()를 호출하여 문을 열 수 있습니다.
- * 문은 공중으로 올라가는 방식으로 열리며, 한번 열리면 다시 닫히지 않습니다.
+ * 외부에서 OpenDoor()/CloseDoor()를 호출하여 문을 열고 닫을 수 있습니다.
+ * 문은 공중으로 올라가는 방식으로 열리며, 트리거 상태에 따라 다시 닫힐 수 있습니다.
  */
 UCLASS()
 class FCJ_API AMovingDoor : public AActor
@@ -28,7 +28,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Components)
 	UStaticMeshComponent* DoorMesh;
 
-	// 문이 열려있는지 여부 (한번 true가 되면 영구적으로 true)
+	// 문이 열려있는지 여부 (트리거 상태에 따라 변경됨)
 	UPROPERTY(ReplicatedUsing = OnRep_IsOpen, VisibleAnywhere, BlueprintReadOnly, Category = "Door State")
 	bool bIsOpen;
 
@@ -55,11 +55,18 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	/**
-	 * 문을 엽니다. 한번 열리면 다시 닫히지 않습니다.
+	 * 문을 엽니다.
 	 * 서버에서만 호출되어야 합니다.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Door")
 	void OpenDoor();
+
+	/**
+	 * 문을 닫습니다.
+	 * 서버에서만 호출되어야 합니다.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Door")
+	void CloseDoor();
 
 	/**
 	 * 문이 열려있는지 확인합니다.

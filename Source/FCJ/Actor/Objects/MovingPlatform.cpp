@@ -36,8 +36,9 @@ void AMovingPlatform::BeginPlay()
 	// Store the starting location
 	StartLocation = GetActorLocation();
 
-	// Calculate target location
-	TargetLocation = StartLocation + MovementDistance;
+	// Calculate target location (convert MovementDistance from local to world space)
+	FVector WorldMovementDistance = GetActorRotation().RotateVector(MovementDistance);
+	TargetLocation = StartLocation + WorldMovementDistance;
 }
 
 // Called every frame

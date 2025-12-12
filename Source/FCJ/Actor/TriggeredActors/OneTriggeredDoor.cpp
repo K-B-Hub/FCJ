@@ -24,7 +24,6 @@ AOneTriggeredDoor::AOneTriggeredDoor()
 	TriggerComponent->SetupAttachment(RootSceneComponent);
 	// Trigger 클래스는 Blueprint에서 설정 (Child Actor Class)
 
-	bDoorOpened = false;
 	CachedDoor = nullptr;
 	CachedTrigger = nullptr;
 }
@@ -53,26 +52,20 @@ void AOneTriggeredDoor::BeginPlay()
 
 void AOneTriggeredDoor::OnTriggerStateChanged(bool bNewState)
 {
-	// 이미 문이 열렸으면 더 이상 체크하지 않음
-	if (bDoorOpened)
+	if (!CachedDoor)
 	{
 		return;
 	}
 
-	// 트리거가 활성화되면 문 열기
+	// 트리거 상태에 따라 문 열기/닫기
 	if (bNewState)
 	{
-		if (CachedDoor)
-		{
-			// 문 열기 (서버에서만 실행됨)
-			CachedDoor->OpenDoor();
-			bDoorOpened = true;
-
-			// 델리게이트 바인딩 해제 (더 이상 필요 없음)
-			if (CachedTrigger)
-			{
-				CachedTrigger->OnTriggerStateChanged.RemoveDynamic(this, &AOneTriggeredDoor::OnTriggerStateChanged);
-			}
-		}
+		// 트리거 활성화 -> 문 열기
+		CachedDoor->OpenDoor();
+	}
+	else
+	{
+		// 트리거 비활성화 -> 문 닫기
+		CachedDoor->CloseDoor();
 	}
 }

@@ -55,6 +55,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Settings", meta = (ClampMin = "0.0", ToolTip = "발사체가 생성되는 위치 오프셋 (로컬)"))
 	FVector ProjectileSpawnOffset = FVector(100.0f, 0.0f, 0.0f);
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Settings", meta = (ClampMin = "0.0", ClampMax = "45.0", ToolTip = "발사 가능한 최대 조준 오차 각도 (도 단위)"))
+	float MaxAimAngle = 5.0f;
+
 	// 발사체 타입 확률
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile Type Chances", meta = (ClampMin = "0.0", ClampMax = "1.0", ToolTip = "완전 호밍 발사체의 생성 확률"))
 	float HomingProjectileChance = 0.33f;
@@ -106,4 +109,7 @@ private:
 	void SelectRandomTarget();
 	EProjectileType GetRandomProjectileType() const;
 	void CleanupDetectedPlayers();
+
+	// 타겟을 정확히 조준하고 있는지 확인
+	bool IsAimingAtTarget() const;
 };

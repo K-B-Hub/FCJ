@@ -40,7 +40,7 @@ ATurret::ATurret()
 	DetectionSphere->OnComponentBeginOverlap.AddDynamic(this, &ATurret::OnDetectionBeginOverlap);
 	DetectionSphere->OnComponentEndOverlap.AddDynamic(this, &ATurret::OnDetectionEndOverlap);
 
-	bIsActive = false;
+	bIsActive = true;
 	CurrentTarget = nullptr;
 }
 
@@ -64,6 +64,12 @@ void ATurret::BeginPlay()
 
 	// 감지 영역 반경 업데이트
 	DetectionSphere->SetSphereRadius(DetectionRadius);
+
+	// 초기 활성화 상태면 발사 시작
+	if (bIsActive && HasAuthority())
+	{
+		StartFiring();
+	}
 }
 
 void ATurret::Tick(float DeltaTime)
@@ -193,6 +199,12 @@ void ATurret::FireProjectile()
 	if (!CurrentTarget)
 		return;
 
+	// 타겟을 정확히 조준하고 있는지 확인
+	if (!IsAimingAtTarget())
+	{
+		return;
+	}
+
 	// 발사 위치 및 방향 계산
 	FVector SpawnLocation = TurretHead->GetComponentLocation() + TurretHead->GetForwardVector() * ProjectileSpawnOffset.X;
 	SpawnLocation += TurretHead->GetRightVector() * ProjectileSpawnOffset.Y;
@@ -243,5 +255,30 @@ void ATurret::CleanupDetectedPlayers()
 	{
 		return !IsValid(Cat);
 	});
+}
+
+bool ATurret::IsAimingAtTarget() const
+{
+	if (!CurrentTarget || !TurretHead)
+		return false;
+
+	// TurretHead의 정면 방향 벡터 (수평 방향만 - Z축 무시)
+	FVector TurretForward = TurretHead->GetForwardVector();
+	TurretForward.Z = 0.0f;
+	TurretForward.Normalize();
+
+	// TurretHead에서 타겟으로 향하는 방향 벡터 (수평 방향만 - Z축 무시)
+	FVector ToTarget = CurrentTarget->GetActorLocation() - TurretHead->GetComponentLocation();
+	ToTarget.Z = 0.0f;
+	ToTarget.Normalize();
+
+	// 두 벡터 간의 내적 계산 (코사인 값)
+	float DotProduct = FVector::DotProduct(TurretForward, ToTarget);
+
+	// 내적을 각도로 변환 (라디안 -> 도)
+	float AngleDegrees = FMath::RadiansToDegrees(FMath::Acos(DotProduct));
+
+	// 각도가 임계값 이하인지 확인
+	return AngleDegrees <= MaxAimAngle;
 }
 
