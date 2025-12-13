@@ -36,6 +36,13 @@ void AOneTriggeredDoor::BeginPlay()
 	if (DoorComponent)
 	{
 		CachedDoor = Cast<AMovingDoor>(DoorComponent->GetChildActor());
+
+		// 문 설정 적용
+		if (CachedDoor)
+		{
+			CachedDoor->OpenHeight = OpenHeight;
+		 	CachedDoor->OpenSpeed = OpenSpeed;
+		}
 	}
 
 	if (TriggerComponent)

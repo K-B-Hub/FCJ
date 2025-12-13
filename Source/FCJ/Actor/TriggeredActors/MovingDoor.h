@@ -36,13 +36,6 @@ protected:
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Door State")
 	bool bIsMoving;
 
-	// 문 열림 설정
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Door Settings", meta = (ToolTip = "문이 이동할 높이 (로컬 Z축 오프셋)"))
-	float OpenHeight = 300.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Door Settings", meta = (ClampMin = "0.1", ToolTip = "문이 열리는 속도 (단위/초)"))
-	float OpenSpeed = 200.0f;
-
 	// 초기 위치 저장
 	FVector InitialLocation;
 	FVector TargetLocation;
@@ -79,4 +72,11 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Door")
 	bool IsMoving() const { return bIsMoving; }
+	
+	// 문 열림 설정
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Door Settings", meta = (ToolTip = "문이 이동할 높이 (로컬 Z축 오프셋)"))
+	float OpenHeight = 300.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Door Settings", meta = (ClampMin = "0.1", ToolTip = "문이 열리는 속도 (단위/초)"))
+	float OpenSpeed = 200.0f;
 };

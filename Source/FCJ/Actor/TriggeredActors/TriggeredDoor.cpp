@@ -41,10 +41,19 @@ void ATriggeredDoor::BeginPlay()
 {
 	Super::BeginPlay();
 
+	UE_LOG(LogTemp, Warning, TEXT("[TriggeredDoor] %s BeginPlay - bUseORLogic: %d, bCanReopen: %d, OpenHeight: %.1f, OpenSpeed: %.1f"),
+		*GetName(), bUseORLogic, bCanReopen, OpenHeight, OpenSpeed);
+
 	// 자식 액터들을 캐시
 	if (DoorComponent)
 	{
 		CachedDoor = Cast<AMovingDoor>(DoorComponent->GetChildActor());
+		// 문 설정 적용
+		if (CachedDoor)
+		{
+			CachedDoor->OpenHeight = OpenHeight;
+			CachedDoor->OpenSpeed = OpenSpeed;
+		}
 	}
 
 	if (Trigger1Component)
@@ -71,55 +80,89 @@ void ATriggeredDoor::BeginPlay()
 
 void ATriggeredDoor::OnTrigger1StateChanged(bool bNewState)
 {
-	// 이미 문이 열렸으면 더 이상 체크하지 않음
-	if (bDoorOpened)
+	UE_LOG(LogTemp, Warning, TEXT("[TriggeredDoor] %s OnTrigger1StateChanged - NewState: %d"), *GetName(), bNewState);
+
+	// bCanReopen이 false이고 이미 문이 열렸으면 더 이상 체크하지 않음
+	if (!bCanReopen && bDoorOpened)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[TriggeredDoor] %s - Door already opened and cannot reopen, ignoring"), *GetName());
 		return;
 	}
 
 	bTrigger1Active = bNewState;
-	CheckAndOpenDoor();
+	CheckAndUpdateDoor();
 }
 
 void ATriggeredDoor::OnTrigger2StateChanged(bool bNewState)
 {
-	// 이미 문이 열렸으면 더 이상 체크하지 않음
-	if (bDoorOpened)
+	UE_LOG(LogTemp, Warning, TEXT("[TriggeredDoor] %s OnTrigger2StateChanged - NewState: %d"), *GetName(), bNewState);
+
+	// bCanReopen이 false이고 이미 문이 열렸으면 더 이상 체크하지 않음
+	if (!bCanReopen && bDoorOpened)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[TriggeredDoor] %s - Door already opened and cannot reopen, ignoring"), *GetName());
 		return;
 	}
 
-	bTrigger2Active = bNewState; 
-	CheckAndOpenDoor();
+	bTrigger2Active = bNewState;
+	CheckAndUpdateDoor();
 }
 
-void ATriggeredDoor::CheckAndOpenDoor()
+void ATriggeredDoor::CheckAndUpdateDoor()
 {
-	// 이미 문이 열렸으면 무시
-	if (bDoorOpened)
+	if (!CachedDoor)
 	{
 		return;
 	}
 
-	// 두 트리거가 모두 활성화되었는지 확인
-	if (bTrigger1Active && bTrigger2Active)
+	// 트리거 조건 확인 (AND 또는 OR)
+	bool bShouldOpen = false;
+	if (bUseORLogic)
 	{
-		if (CachedDoor)
+		// OR 연산: 하나라도 활성화되면 문 열기
+		bShouldOpen = bTrigger1Active || bTrigger2Active;
+	}
+	else
+	{
+		// AND 연산: 둘 다 활성화되면 문 열기
+		bShouldOpen = bTrigger1Active && bTrigger2Active;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[TriggeredDoor] %s CheckAndUpdateDoor - bUseORLogic: %d, Trigger1: %d, Trigger2: %d, ShouldOpen: %d"),
+		*GetName(), bUseORLogic, bTrigger1Active, bTrigger2Active, bShouldOpen);
+
+	// 문 상태 업데이트
+	if (bShouldOpen)
+	{
+		// 문 열기
+		CachedDoor->OpenDoor();
+
+		// 처음 열릴 때만 bDoorOpened를 true로 설정
+		if (!bDoorOpened)
 		{
-			// 문 열기 (서버에서만 실행됨)
-			CachedDoor->OpenDoor();
 			bDoorOpened = true;
 
-			// 델리게이트 바인딩 해제 (더 이상 필요 없음)
-			if (CachedTrigger1)
+			// bCanReopen이 false이면 델리게이트 바인딩 해제 (더 이상 상태 변경 필요 없음)
+			if (!bCanReopen)
 			{
-				CachedTrigger1->OnTriggerStateChanged.RemoveDynamic(this, &ATriggeredDoor::OnTrigger1StateChanged);
-			}
+				if (CachedTrigger1)
+				{
+					CachedTrigger1->OnTriggerStateChanged.RemoveDynamic(this, &ATriggeredDoor::OnTrigger1StateChanged);
+				}
 
-			if (CachedTrigger2)
-			{
-				CachedTrigger2->OnTriggerStateChanged.RemoveDynamic(this, &ATriggeredDoor::OnTrigger2StateChanged);
+				if (CachedTrigger2)
+				{
+					CachedTrigger2->OnTriggerStateChanged.RemoveDynamic(this, &ATriggeredDoor::OnTrigger2StateChanged);
+				}
 			}
+		}
+	}
+	else
+	{
+		// bCanReopen이 true일 때만 문 닫기
+		if (bCanReopen)
+		{
+			CachedDoor->CloseDoor();
 		}
 	}
 }
