@@ -111,6 +111,33 @@ The project implements a modular dual-cat cooperative system designed for platfo
      - Continuous rotation on specified axes
      - Characters attach during parkour to maintain relative position
 
+   - **AFadingPlatform**: Disappearing platforms for timing-based platforming challenges
+     - Delegate-based event system (`FOnPlatformStepped`) broadcasts when player steps on platform
+     - Blueprint-configurable timing: FadeDelay (time before disappearing) and RespawnDelay (time before reappearing)
+     - Optional auto-respawn feature for recurring platform patterns
+     - Server-authoritative state with `bIsActive` replication
+     - RepNotify (`OnRep_IsActive`) synchronizes visual state (visibility/collision) to all clients
+     - Timer-based event handling eliminates Tick overhead
+     - Advanced control methods:
+       - `SetTriggerEnabled()`: Enable/disable step detection without changing visibility
+       - `ActivatePlatformWithoutTrigger()`: Show platform but prevent triggering (for PairFadingPlatform)
+       - `ResetPlatform()`: Server-only reset to initial state with all timers cleared
+     - Visibility and collision toggled together (invisible = no collision)
+
+   - **APairFadingPlatform**: Alternating platform system for sequential platforming puzzles
+     - Composite actor with two AFadingPlatform as ChildActorComponents
+     - Alternating activation pattern: stepping on one platform reveals the other
+     - Blueprint-configurable starting platform (`bStartWithFirstPlatform`)
+     - TriggerEnableDelay prevents immediate re-trigger after platform swap (default: 1.0s)
+     - Delegate-driven coordination: binds to child platforms' `OnPlatformStepped` events
+     - Server-authoritative with no Tick polling
+     - Platform swap sequence:
+       1. Player steps on Platform A → Broadcasts `OnPlatformStepped` delegate
+       2. Platform B becomes visible and enabled (but trigger disabled)
+       3. After TriggerEnableDelay, Platform B's trigger activates
+       4. Platform A fades according to its FadeDelay setting
+     - Blueprint-adjustable ChildActorComponent transforms for level design flexibility
+
 6. **Projectile Combat System**
    - **AProjectile**: Advanced projectile actors with multiple behavior types
      - Straight, homing, and guided projectile variants
@@ -313,7 +340,9 @@ Source/FCJ/
 │       ├── HoldingObject.cpp/h                  # Objects grabbable by BiteCat
 │       ├── Projectile.cpp/h                     # Advanced projectile system
 │       ├── MovingPlatform.cpp/h                 # Linear moving platforms
-│       └── RotationPlatform.cpp/h               # Rotating platforms
+│       ├── RotationPlatform.cpp/h               # Rotating platforms
+│       ├── FadingPlatform.cpp/h                 # Disappearing platforms with delegate events
+│       └── PairFadingPlatform.cpp/h             # Alternating platform system
 ├── Animation/                   # Animation notify states
 │   └── ParryingNotifyState.cpp/h # Animation notify for parrying mechanics
 └── Widdget/                     # UI widgets (note: typo in folder name)
