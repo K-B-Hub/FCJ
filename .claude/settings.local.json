@@ -7,7 +7,9 @@
       "Bash(findstr:*)",
       "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" \"E:\\UE5\\Project\\FCJ\\FCJ.sln\" /t:Build /p:Configuration=\"Development Editor\" /p:Platform=Win64)",
       "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" \"E:\\UE5\\Project\\FCJ\\FCJ.sln\" /t:Build \"/p:Configuration=Development Editor\" /p:Platform=Win64)",
-      "Bash(\"C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Build\\BatchFiles\\Build.bat\" FCJEditor Win64 Development \"E:\\UE5\\Project\\FCJ\\FCJ.uproject\" -WaitMutex)"
+      "Bash(\"C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Build\\BatchFiles\\Build.bat\" FCJEditor Win64 Development \"E:\\UE5\\Project\\FCJ\\FCJ.uproject\" -WaitMutex)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

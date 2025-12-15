@@ -138,6 +138,25 @@ The project implements a modular dual-cat cooperative system designed for platfo
        4. Platform A fades according to its FadeDelay setting
      - Blueprint-adjustable ChildActorComponent transforms for level design flexibility
 
+   - **AContinuousFadingPlatform**: Continuous platform system for sequential platforming challenges
+     - Composite actor with AFadingPlatform as ChildActorComponent
+     - TriggerBox (UBoxComponent) detects overlapping ContinuousFadingPlatform actors for activation range
+     - Delegate-driven: Binds to child FadingPlatform's `OnPlatformStepped` event
+     - Server-authoritative with timer-based logic (no Tick overhead)
+     - Sequential activation pattern: stepping on one platform reveals all platforms within trigger range
+     - Blueprint-configurable timing:
+       - `FadeDelay`: Time before current platform fades after being stepped on (default: 2.0s)
+       - `RespawnDelay`: Time before platform respawns after fading (default: 3.0s)
+       - `bStartActive`: Whether platform starts visible (default: true)
+     - Continuous cycle: Platform respawns automatically after RespawnDelay for reusable sequences
+     - Platform activation sequence:
+       1. Player steps on Platform A → Broadcasts `OnPlatformStepped` delegate
+       2. All ContinuousFadingPlatform within TriggerBox range become visible and active
+       3. After FadeDelay, Platform A fades out
+       4. After RespawnDelay, Platform A respawns and can be triggered again
+     - `ResetPlatform()`: Server-only function to reset platform to initial state
+     - Use case: Create dynamic platforming sequences where players must quickly navigate to the next platform before the current one disappears
+
 6. **Projectile Combat System**
    - **AProjectile**: Advanced projectile actors with multiple behavior types
      - Straight, homing, and guided projectile variants
@@ -342,7 +361,8 @@ Source/FCJ/
 │       ├── MovingPlatform.cpp/h                 # Linear moving platforms
 │       ├── RotationPlatform.cpp/h               # Rotating platforms
 │       ├── FadingPlatform.cpp/h                 # Disappearing platforms with delegate events
-│       └── PairFadingPlatform.cpp/h             # Alternating platform system
+│       ├── PairFadingPlatform.cpp/h             # Alternating platform system
+│       └── ContinuousFadingPlatform.cpp/h       # Continuous sequential platform system
 ├── Animation/                   # Animation notify states
 │   └── ParryingNotifyState.cpp/h # Animation notify for parrying mechanics
 └── Widdget/                     # UI widgets (note: typo in folder name)
