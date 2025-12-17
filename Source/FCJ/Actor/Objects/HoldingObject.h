@@ -15,8 +15,8 @@ UCLASS(Blueprintable)
 class FCJ_API AHoldingObject : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
+
+public:
 	AHoldingObject();
 
 protected:
@@ -69,8 +69,8 @@ protected:
 	UPROPERTY()
 	FVector InitialLocation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Respawn Settings", meta = (ToolTip = "이 높이 이하로 떨어지면 리스폰됩니다"))
-	float RespawnZThreshold = -500.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Respawn Settings", meta = (ToolTip = "초기 위치에서 이 거리 이상 아래로 떨어지면 리스폰됩니다 (양수 값)"))
+	float RespawnZThreshold = 500.0f;
 
 public:
 	virtual void Tick(float DeltaTime) override;

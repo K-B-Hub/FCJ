@@ -101,9 +101,11 @@ void AHoldingObject::Tick(float DeltaTime)
 		MeshComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
 	}
 
-	// Z축 위치 체크 (서버에서만)
-	if (HasAuthority() && GetActorLocation().Z < RespawnZThreshold)
+	// Z축 위치 체크 (서버에서만) - 초기 위치에서 일정 거리 이상 아래로 떨어지면 리스폰
+	if (HasAuthority() && (InitialLocation.Z - GetActorLocation().Z) > RespawnZThreshold)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[HoldingObject] %s fell below threshold (Initial: %.2f, Current: %.2f, Threshold: %.2f), respawning..."),
+			*GetName(), InitialLocation.Z, GetActorLocation().Z, RespawnZThreshold);
 		RespawnToInitialLocation();
 		return; // 리스폰 후 나머지 로직 건너뛰기
 	}
