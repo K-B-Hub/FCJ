@@ -60,10 +60,7 @@ protected:
 
 	// 물리 안정성 설정
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics Settings", meta = (ToolTip = "물체의 안정성을 높입니다. 높을수록 외부 충격에 덜 반응합니다"))
-	float StabilityDamping = 10.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics Settings", meta = (ToolTip = "중력 스케일 값입니다. 1.0이 기본 중력입니다"))
-	float GravityScale = 1.0f;
+	float StabilityDamping = 100.0f;
 
 	// 리스폰 관련 설정
 	UPROPERTY()
@@ -71,6 +68,14 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Respawn Settings", meta = (ToolTip = "초기 위치에서 이 거리 이상 아래로 떨어지면 리스폰됩니다 (양수 값)"))
 	float RespawnZThreshold = 500.0f;
+
+	// SlowFallVolume 안에 있는지 여부
+	UPROPERTY(BlueprintReadOnly, Category = "SlowFall")
+	bool bIsInSlowFallVolume = false;
+
+	// SlowFallVolume 안에서 최대 이동 속도
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SlowFall", meta = (ToolTip = "SlowFallVolume 안에서 허용되는 최대 이동 속도입니다"))
+	float MaxSlowFallSpeed = 100.0f;
 
 public:
 	virtual void Tick(float DeltaTime) override;
@@ -101,5 +106,9 @@ public:
 	// 리스폰 함수 (RespawnVolume에서 호출)
 	UFUNCTION(BlueprintCallable, Category = "Respawn")
 	void RespawnToInitialLocation();
+
+	// SlowFallVolume 상태 설정 함수
+	UFUNCTION(BlueprintCallable, Category = "SlowFall")
+	void SetInSlowFallVolume(bool bInVolume) { bIsInSlowFallVolume = bInVolume; }
 
 };

@@ -6,6 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 FCJ is an Unreal Engine 5.6 cooperative platformer game featuring two independent cat characters working together. The project focuses on a modular character system where each cat has specialized abilities and players must coordinate their actions to overcome platforming challenges. The architecture emphasizes Blueprint-configurable base classes that support different cat types with unique cooperative mechanics.
 
+## Important Rules
+
+**CRITICAL: When modifying code, ONLY make the code changes. NEVER build or compile the project.**
+
+- Make code modifications (Edit, Write tools) as requested
+- DO NOT run any build commands (MSBuild, UnrealBuildTool, etc.)
+- DO NOT attempt to compile or verify compilation
+- The user will handle all build and compilation tasks manually
+- Your job is to write/modify code correctly; the user will verify it compiles
+
 ## Build System
 
 This project uses Unreal Engine 5.6's standard build system:

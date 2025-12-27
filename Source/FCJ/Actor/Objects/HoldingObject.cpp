@@ -22,6 +22,7 @@ AHoldingObject::AHoldingObject()
 	MeshComponent->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 	MeshComponent->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
 	MeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Block);
+	MeshComponent->SetGenerateOverlapEvents(true);
 
 	// 메시 컴포넌트에 물리 댐핑 설정
 	MeshComponent->SetLinearDamping(LinearDamping);
@@ -134,26 +135,55 @@ void AHoldingObject::Tick(float DeltaTime)
 		FVector CurrentVelocity = MeshComponent->GetPhysicsLinearVelocity();
 		FVector CurrentAngularVelocity = MeshComponent->GetPhysicsAngularVelocityInDegrees();
 
-		// 캐릭터의 밀림만 최소화하고 중력과 던지기는 정상 작동하도록 조정
-		// 수평 방향의 작은 움직임만 댐핑 (중력은 수직이므로 영향 없음)
-		if (CurrentVelocity.Size() < 50.0f && CurrentVelocity.Size() > 0.1f)
+		// SlowFallVolume 안에 있을 때는 Z축 속도도 댐핑 적용
+		if (bIsInSlowFallVolume)
 		{
-			// 수평 방향만 댐핑, 수직(중력) 방향은 유지
-			FVector HorizontalVelocity = FVector(CurrentVelocity.X, CurrentVelocity.Y, 0.0f);
-			FVector VerticalVelocity = FVector(0.0f, 0.0f, CurrentVelocity.Z);
-
-			if (HorizontalVelocity.Size() < 20.0f)
+			// 최대 속도 제한 적용
+			float CurrentSpeed = CurrentVelocity.Size();
+			if (CurrentSpeed > MaxSlowFallSpeed)
 			{
-				FVector DampedHorizontal = HorizontalVelocity * FMath::Pow(0.8f, DeltaTime * StabilityDamping);
-				MeshComponent->SetPhysicsLinearVelocity(DampedHorizontal + VerticalVelocity);
+				FVector ClampedVelocity = CurrentVelocity.GetSafeNormal() * MaxSlowFallSpeed;
+				MeshComponent->SetPhysicsLinearVelocity(ClampedVelocity);
+				CurrentVelocity = ClampedVelocity;
+				CurrentSpeed = MaxSlowFallSpeed;
+			}
+
+			// 모든 방향(X, Y, Z)에 댐핑 적용
+			if (CurrentSpeed < 50.0f && CurrentSpeed > 0.1f)
+			{
+				FVector DampedVelocity = CurrentVelocity * FMath::Pow(0.8f, DeltaTime * StabilityDamping);
+				MeshComponent->SetPhysicsLinearVelocity(DampedVelocity);
+			}
+
+			// 전체 속도가 작으면 완전히 정지
+			if (CurrentSpeed < 2.0f)
+			{
+				MeshComponent->SetPhysicsLinearVelocity(FVector::ZeroVector);
 			}
 		}
-
-		// 낮은 수평 속도에서만 정지 (중력 낙하는 유지)
-		FVector HorizontalOnly = FVector(CurrentVelocity.X, CurrentVelocity.Y, 0.0f);
-		if (HorizontalOnly.Size() < 2.0f)
+		else
 		{
-			MeshComponent->SetPhysicsLinearVelocity(FVector(0.0f, 0.0f, CurrentVelocity.Z));
+			// 캐릭터의 밀림만 최소화하고 중력과 던지기는 정상 작동하도록 조정
+			// 수평 방향의 작은 움직임만 댐핑 (중력은 수직이므로 영향 없음)
+			if (CurrentVelocity.Size() < 50.0f && CurrentVelocity.Size() > 0.1f)
+			{
+				// 수평 방향만 댐핑, 수직(중력) 방향은 유지
+				FVector HorizontalVelocity = FVector(CurrentVelocity.X, CurrentVelocity.Y, 0.0f);
+				FVector VerticalVelocity = FVector(0.0f, 0.0f, CurrentVelocity.Z);
+
+				if (HorizontalVelocity.Size() < 20.0f)
+				{
+					FVector DampedHorizontal = HorizontalVelocity * FMath::Pow(0.8f, DeltaTime * StabilityDamping);
+					MeshComponent->SetPhysicsLinearVelocity(DampedHorizontal + VerticalVelocity);
+				}
+			}
+
+			// 낮은 수평 속도에서만 정지 (중력 낙하는 유지)
+			FVector HorizontalOnly = FVector(CurrentVelocity.X, CurrentVelocity.Y, 0.0f);
+			if (HorizontalOnly.Size() < 2.0f)
+			{
+				MeshComponent->SetPhysicsLinearVelocity(FVector(0.0f, 0.0f, CurrentVelocity.Z));
+			}
 		}
 	}
 }
