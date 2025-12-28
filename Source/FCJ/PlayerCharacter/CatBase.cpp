@@ -90,6 +90,7 @@ ACatBase::ACatBase()
 	GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
 	GetCharacterMovement()->JumpZVelocity = JumpVelocity;
 	GetCharacterMovement()->AirControl = AirControl;
+	GetCharacterMovement()->Mass = CharacterMass;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	GetCharacterMovement()->bUseControllerDesiredRotation = false;
 	
@@ -209,6 +210,7 @@ void ACatBase::ApplyBlueprintSettings()
 		GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
 		GetCharacterMovement()->JumpZVelocity = JumpVelocity;
 		GetCharacterMovement()->AirControl = AirControl;
+		GetCharacterMovement()->Mass = CharacterMass;
 	}
 
 }

@@ -70,7 +70,7 @@ protected:
 	float RespawnZThreshold = 500.0f;
 
 	// SlowFallVolume 안에 있는지 여부
-	UPROPERTY(BlueprintReadOnly, Category = "SlowFall")
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "SlowFall")
 	bool bIsInSlowFallVolume = false;
 
 	// SlowFallVolume 안에서 최대 이동 속도

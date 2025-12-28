@@ -90,6 +90,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement Settings", meta = (ToolTip = "공중에 있을 때 방향 전환이 얼마나 쉬운지 설정합니다 (0=불가능, 1=지상과 동일)"))
 	float AirControl = 0.5f;
 
+	// 캐릭터의 질량 (kg 단위)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement Settings", meta = (ToolTip = "캐릭터의 질량을 kg 단위로 설정합니다. 물리 상호작용과 넉백에 영향을 줍니다"))
+	float CharacterMass = 75.0f;
+
 	// Wall Jump Settings
 	// 벽점프 감지 반경 (이 거리 내의 벽만 감지됩니다)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wall Jump Settings", meta = (ToolTip = "벽점프가 가능한 최대 거리를 설정합니다"))

@@ -48,6 +48,7 @@ void AHoldingObject::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 
 	DOREPLIFETIME(AHoldingObject, bIsBeingHeld);
 	DOREPLIFETIME(AHoldingObject, HoldingCat);
+	DOREPLIFETIME(AHoldingObject, bIsInSlowFallVolume);
 }
 
 
