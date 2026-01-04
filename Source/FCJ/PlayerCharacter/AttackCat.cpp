@@ -20,15 +20,17 @@ void AAttackCat::BeginPlay()
 
 void AAttackCat::PerformSpecialAction()
 {
-	if (AttackMontage && !bIsParrying && !IsPlayingMontage())
+	if (AttackMontage && !bIsParrying)
 	{
 		if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
 		{
-			AnimInstance->Montage_Play(AttackMontage);
-			SetMontageePlaying(true);
+			if (!AnimInstance->IsAnyMontagePlaying())
+			{
+				AnimInstance->Montage_Play(AttackMontage);
+			}
 		}
 	}
-	
+
 	Super::PerformSpecialAction();
 }
 
@@ -49,18 +51,9 @@ void AAttackCat::StartParrying()
 void AAttackCat::StopParrying()
 {
 	bIsParrying = false;
-	
+
 	// Stop checking for projectiles
 	GetWorld()->GetTimerManager().ClearTimer(ProjectileReflectionTimer);
-	
-	// Check if attack montage is finished and reset montage state
-	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
-	{
-		if (!AnimInstance->Montage_IsPlaying(AttackMontage))
-		{
-			SetMontageePlaying(false);
-		}
-	}
 }
 
 void AAttackCat::CheckAndReflectProjectiles()

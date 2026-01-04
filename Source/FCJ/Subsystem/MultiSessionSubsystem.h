@@ -56,7 +56,7 @@ public:
 	bool bInServer = false;
 
 private:
-	// 플레이어 역할 정보 저장 (NetId -> Role: 0 = AttackCat, 1 = BiteCat)
+	// 플레이어 역할 정보 저장 (NetId -> Role: 0 = HybridCat (AttackCat 외형), 1 = HybridCat (BiteCat 외형))
 	TMap<FString, int32> PlayerRoles;
 	FName serverName;
 

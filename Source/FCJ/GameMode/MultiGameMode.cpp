@@ -6,8 +6,7 @@
 #include "LobbyGameState.h"
 #include "PlayerController/MultiPlayerController.h"
 #include "PlayerCharacter/CatBase.h"
-#include "PlayerCharacter/AttackCat.h"
-#include "PlayerCharacter/BiteCat.h"
+#include "PlayerCharacter/HybridCat.h"
 #include "Subsystem/MultiSessionSubsystem.h"
 #include "OnlineSubsystem.h"
 #include "Interfaces/OnlineIdentityInterface.h"
@@ -24,8 +23,8 @@ AMultiGameMode::AMultiGameMode()
 	DefaultPawnClass = ACatBase::StaticClass();
 
 	// 기본 캐릭터 클래스 설정
-	AttackCatClass = AAttackCat::StaticClass();
-	BiteCatClass = ABiteCat::StaticClass();
+	AttackCatClass = AHybridCat::StaticClass();
+	BiteCatClass = AHybridCat::StaticClass();
 }
 
 void AMultiGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
@@ -100,62 +99,32 @@ void AMultiGameMode::PostLogin(APlayerController* NewPlayer)
 	// Subsystem에서 저장된 역할 정보 가져오기
 	int32 role = GetRoleFromSubsystem(NewPlayer);
 
-	if (role >= 0 && role < 2)
+	// 역할이 없으면 기본 역할 할당 (순차적으로 0, 1 할당)
+	if (role < 0 || role >= 2)
 	{
-		PlayerRoles.Add(NewPlayer, role);
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green,
-			FString::Printf(TEXT("Player assigned role from Subsystem: %d"), role));
+		role = PlayerRoles.Num();
 
-		// 역할에 맞는 캐릭터 생성
-		TSubclassOf<ACatBase> PawnClassToSpawn = nullptr;
-
-		if (role == 0 && AttackCatClass)
+		// 이미 2명이 참가했으면 더 이상 할당하지 않음
+		if (role >= 2)
 		{
-			// 1P = AttackCat
-			PawnClassToSpawn = AttackCatClass;
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, TEXT("Spawning AttackCat for Player 1"));
-		}
-		else if (role == 1 && BiteCatClass)
-		{
-			// 2P = BiteCat
-			PawnClassToSpawn = BiteCatClass;
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, TEXT("Spawning BiteCat for Player 2"));
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Lobby is full! Cannot assign role."));
+			return;
 		}
 
-		// 기존 폰 제거 및 새 캐릭터 생성
-		if (PawnClassToSpawn)
-		{
-			if (NewPlayer->GetPawn())
-			{
-				NewPlayer->GetPawn()->Destroy();
-			}
-
-			FActorSpawnParameters SpawnParams;
-			SpawnParams.Owner = NewPlayer;
-			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-
-			AActor* StartSpot = FindPlayerStart(NewPlayer);
-			FVector SpawnLocation = StartSpot ? StartSpot->GetActorLocation() : FVector::ZeroVector;
-			FRotator SpawnRotation = StartSpot ? StartSpot->GetActorRotation() : FRotator::ZeroRotator;
-
-			ACatBase* NewPawn = GetWorld()->SpawnActor<ACatBase>(PawnClassToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
-			if (NewPawn)
-			{
-				NewPlayer->Possess(NewPawn);
-			}
-		}
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow,
+			FString::Printf(TEXT("Player assigned default role: %d"), role));
 	}
 	else
 	{
-		// 역할이 없으면 기본 로직 사용
-		int32 PlayerCount = PlayerRoles.Num();
-		if (PlayerCount < 2)
-		{
-			PlayerRoles.Add(NewPlayer, PlayerCount);
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow,
-				FString::Printf(TEXT("Player assigned default role: %d"), PlayerCount));
-		}
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green,
+			FString::Printf(TEXT("Player assigned role from Subsystem: %d"), role));
 	}
+
+	// 역할 저장
+	PlayerRoles.Add(NewPlayer, role);
+
+	// 역할에 맞는 캐릭터 스폰
+	SpawnCharacterForRole(NewPlayer, role);
 }
 
 int32 AMultiGameMode::GetRoleFromSubsystem(APlayerController* PC)
@@ -213,6 +182,62 @@ int32 AMultiGameMode::GetRoleFromSubsystem(APlayerController* PC)
 
 	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("No role found anywhere"));
 	return -1;
+}
+
+void AMultiGameMode::SpawnCharacterForRole(APlayerController* PC, int32 role)
+{
+	if (!PC)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[SpawnCharacterForRole] PC is null"));
+		return;
+	}
+
+	// 역할에 맞는 캐릭터 클래스 선택
+	TSubclassOf<ACatBase> PawnClassToSpawn = nullptr;
+
+	if (role == 0 && AttackCatClass)
+	{
+		// 1P = HybridCat (AttackCat 외형)
+		PawnClassToSpawn = AttackCatClass;
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, TEXT("Spawning HybridCat (AttackCat style) for Player 1"));
+	}
+	else if (role == 1 && BiteCatClass)
+	{
+		// 2P = HybridCat (BiteCat 외형)
+		PawnClassToSpawn = BiteCatClass;
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, TEXT("Spawning HybridCat (BiteCat style) for Player 2"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[SpawnCharacterForRole] Invalid role %d or missing character class"), role);
+		return;
+	}
+
+	// 기존 폰 제거
+	if (PC->GetPawn())
+	{
+		PC->GetPawn()->Destroy();
+	}
+
+	// 새 캐릭터 스폰
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = PC;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	AActor* StartSpot = FindPlayerStart(PC);
+	FVector SpawnLocation = StartSpot ? StartSpot->GetActorLocation() : FVector::ZeroVector;
+	FRotator SpawnRotation = StartSpot ? StartSpot->GetActorRotation() : FRotator::ZeroRotator;
+
+	ACatBase* NewPawn = GetWorld()->SpawnActor<ACatBase>(PawnClassToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
+	if (NewPawn)
+	{
+		PC->Possess(NewPawn);
+		UE_LOG(LogTemp, Log, TEXT("[SpawnCharacterForRole] Successfully spawned and possessed character for role %d"), role);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[SpawnCharacterForRole] Failed to spawn character for role %d"), role);
+	}
 }
 
 void AMultiGameMode::SwapPlayerRoles()

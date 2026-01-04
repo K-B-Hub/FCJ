@@ -163,6 +163,12 @@ void AMultiPlayerController::SetupInputComponent()
 			EnhancedInputComponent->BindAction(SpecialAction, ETriggerEvent::Completed, this, &AMultiPlayerController::OnSpecialActionReleased);
 		}
 
+		// Secondary Special Action
+		if (SecondarySpecialAction)
+		{
+			EnhancedInputComponent->BindAction(SecondarySpecialAction, ETriggerEvent::Started, this, &AMultiPlayerController::PerformSecondarySpecialAction);
+		}
+
 		// Zoom
 		if (ZoomAction)
 		{
@@ -293,10 +299,20 @@ void AMultiPlayerController::OnSpecialActionReleased()
 {
 	if (APawn* ControlledPawn = GetPawn())
 	{
-		if (ABiteCat* CatCharacter = Cast<ABiteCat>(ControlledPawn))
+		if (ACatBase* CatCharacter = Cast<ACatBase>(ControlledPawn))
 		{
-			// BiteCat의 충전 던지기 해제
-			CatCharacter->ReleaseThrow();
+			CatCharacter->OnSpecialActionReleased();
+		}
+	}
+}
+
+void AMultiPlayerController::PerformSecondarySpecialAction()
+{
+	if (APawn* ControlledPawn = GetPawn())
+	{
+		if (ACatBase* CatCharacter = Cast<ACatBase>(ControlledPawn))
+		{
+			CatCharacter->PerformSecondarySpecialAction();
 		}
 	}
 }
@@ -450,6 +466,10 @@ void AMultiPlayerController::ApplyKeyMappingsFromConfig(const TMap<FString, FStr
 			else if (Pair.Key == TEXT("Action") && SpecialAction)
 			{
 				SetKeyForAction(SpecialAction, NewKey);
+			}
+			else if (Pair.Key == TEXT("SecondaryAction") && SecondarySpecialAction)
+			{
+				SetKeyForAction(SecondarySpecialAction, NewKey);
 			}
 		}
 		else

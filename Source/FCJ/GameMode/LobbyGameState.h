@@ -18,7 +18,7 @@ struct FPlayerRoleInfo
 	FString PlayerName;
 
 	UPROPERTY()
-	int32 Role; // 0 = AttackCat, 1 = BiteCat
+	int32 Role; // 0 = HybridCat (AttackCat 외형), 1 = HybridCat (BiteCat 외형)
 
 	FPlayerRoleInfo()
 		: PlayerNetId(TEXT("")), PlayerName(TEXT("")), Role(-1)

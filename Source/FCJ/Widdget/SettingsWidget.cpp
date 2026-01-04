@@ -20,7 +20,8 @@ const TMap<FString, FKey> USettingsWidget::DefaultKeyMappings = {
 	{TEXT("MoveLeft"), EKeys::A},
 	{TEXT("MoveRight"), EKeys::D},
 	{TEXT("Jump"), EKeys::SpaceBar},
-	{TEXT("Action"), EKeys::LeftShift}
+	{TEXT("Action"), EKeys::LeftShift},
+	{TEXT("SecondaryAction"), EKeys::LeftControl}
 };
 
 void USettingsWidget::NativeConstruct()
@@ -102,6 +103,11 @@ void USettingsWidget::NativeConstruct()
 	if (ActionKeyButton)
 	{
 		ActionKeyButton->OnClicked.AddDynamic(this, &USettingsWidget::OnActionKeyClicked);
+	}
+
+	if (SecondaryActionKeyButton)
+	{
+		SecondaryActionKeyButton->OnClicked.AddDynamic(this, &USettingsWidget::OnSecondaryActionKeyClicked);
 	}
 
 	if (ResetToDefaultButton)
@@ -293,10 +299,15 @@ void USettingsWidget::OnActionKeyClicked()
 	StartKeyRemapping(TEXT("Action"));
 }
 
+void USettingsWidget::OnSecondaryActionKeyClicked()
+{
+	StartKeyRemapping(TEXT("SecondaryAction"));
+}
+
 void USettingsWidget::OnResetToDefaultClicked()
 {
 	ResetInputMappingsToDefault();
-	
+
 	// Update UI immediately with default values
 	UpdateButtonText(MoveForwardKeyText, DefaultKeyMappings[TEXT("MoveForward")]);
 	UpdateButtonText(MoveBackwardKeyText, DefaultKeyMappings[TEXT("MoveBackward")]);
@@ -304,7 +315,8 @@ void USettingsWidget::OnResetToDefaultClicked()
 	UpdateButtonText(MoveRightKeyText, DefaultKeyMappings[TEXT("MoveRight")]);
 	UpdateButtonText(JumpKeyText, DefaultKeyMappings[TEXT("Jump")]);
 	UpdateButtonText(ActionKeyText, DefaultKeyMappings[TEXT("Action")]);
-	
+	UpdateButtonText(SecondaryActionKeyText, DefaultKeyMappings[TEXT("SecondaryAction")]);
+
 	// Save the reset values to config
 	SaveSettings();
 }
@@ -371,6 +383,7 @@ void USettingsWidget::LoadSettings()
 	UpdateButtonText(MoveRightKeyText, InputMappings.FindRef(TEXT("MoveRight")).CurrentKey);
 	UpdateButtonText(JumpKeyText, InputMappings.FindRef(TEXT("Jump")).CurrentKey);
 	UpdateButtonText(ActionKeyText, InputMappings.FindRef(TEXT("Action")).CurrentKey);
+	UpdateButtonText(SecondaryActionKeyText, InputMappings.FindRef(TEXT("SecondaryAction")).CurrentKey);
 
 	// Update value text displays
 	OnMouseSensitivityChanged(CachedMouseSensitivity);
@@ -424,6 +437,7 @@ void USettingsWidget::StartKeyRemapping(const FString& ActionName)
 	else if (ActionName == TEXT("MoveRight")) TextWidget = MoveRightKeyText;
 	else if (ActionName == TEXT("Jump")) TextWidget = JumpKeyText;
 	else if (ActionName == TEXT("Action")) TextWidget = ActionKeyText;
+	else if (ActionName == TEXT("SecondaryAction")) TextWidget = SecondaryActionKeyText;
 
 	if (TextWidget)
 	{
@@ -471,6 +485,10 @@ void USettingsWidget::UpdateKeyBinding(const FString& ActionName, const FKey& Ne
 			{
 				UpdateButtonText(ActionKeyText, OldKey);
 			}
+			else if (ExistingAction == TEXT("SecondaryAction"))
+			{
+				UpdateButtonText(SecondaryActionKeyText, OldKey);
+			}
 			
 			UE_LOG(LogTemp, Warning, TEXT("Key swap: %s got %s, %s got %s"), *ActionName, *NewKey.ToString(), *ExistingAction, *OldKey.ToString());
 		}
@@ -502,6 +520,10 @@ void USettingsWidget::UpdateKeyBinding(const FString& ActionName, const FKey& Ne
 		else if (ActionName == TEXT("Action"))
 		{
 			UpdateButtonText(ActionKeyText, NewKey);
+		}
+		else if (ActionName == TEXT("SecondaryAction"))
+		{
+			UpdateButtonText(SecondaryActionKeyText, NewKey);
 		}
 	}
 }
@@ -661,7 +683,7 @@ void USettingsWidget::LoadInputSettingsFromConfig(float& OutMouseSensitivity, bo
 		GConfig->GetFloat(*InputSettingsSection, TEXT("ZoomSpeed"), OutZoomSpeed, GGameUserSettingsIni);
 		
 		// Load key mappings for individual keys
-		TArray<FString> ActionNames = {TEXT("MoveForward"), TEXT("MoveBackward"), TEXT("MoveLeft"), TEXT("MoveRight"), TEXT("Jump"), TEXT("Action")};
+		TArray<FString> ActionNames = {TEXT("MoveForward"), TEXT("MoveBackward"), TEXT("MoveLeft"), TEXT("MoveRight"), TEXT("Jump"), TEXT("Action"), TEXT("SecondaryAction")};
 		for (const FString& ActionName : ActionNames)
 		{
 			FString KeyString;
@@ -720,6 +742,10 @@ void USettingsWidget::RestoreButtonText(const FString& ActionName)
 		else if (ActionName == TEXT("Action"))
 		{
 			UpdateButtonText(ActionKeyText, CurrentKey);
+		}
+		else if (ActionName == TEXT("SecondaryAction"))
+		{
+			UpdateButtonText(SecondaryActionKeyText, CurrentKey);
 		}
 	}
 }

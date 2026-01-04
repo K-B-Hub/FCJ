@@ -119,6 +119,13 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* ActionKeyText;
 
+	// IA_SecondaryAction
+	UPROPERTY(meta = (BindWidget))
+	UButton* SecondaryActionKeyButton;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* SecondaryActionKeyText;
+
 	UPROPERTY(meta = (BindWidget))
 	UButton* ResetToDefaultButton;
 
@@ -169,6 +176,9 @@ private:
 
 	UFUNCTION()
 	void OnActionKeyClicked();
+
+	UFUNCTION()
+	void OnSecondaryActionKeyClicked();
 
 	UFUNCTION()
 	void OnResetToDefaultClicked();

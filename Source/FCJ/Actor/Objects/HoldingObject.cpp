@@ -4,7 +4,7 @@
 #include "Actor/Objects/HoldingObject.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
-#include "PlayerCharacter/BiteCat.h"
+#include "PlayerCharacter/CatBase.h"
 #include "Engine/Engine.h"
 #include "Net/UnrealNetwork.h"
 
@@ -194,7 +194,7 @@ bool AHoldingObject::CanBeHeld() const
 	return !bIsBeingHeld;
 }
 
-void AHoldingObject::OnHeld(ABiteCat* Cat)
+void AHoldingObject::OnHeld(ACatBase* Cat)
 {
 	if (!CanBeHeld() || !Cat)
 	{
@@ -205,11 +205,8 @@ void AHoldingObject::OnHeld(ABiteCat* Cat)
 	bIsBeingHeld = true;
 	HoldingCat = Cat;
 
-	// 잡혀있을 때 캐릭터와 충돌하지 않도록 설정
-	if (MeshComponent)
-	{
-		MeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
-	}
+	// 모든 클라이언트에서 충돌 무시 설정 (멀티플레이어 동기화)
+	MulticastSetCollisionIgnore(Cat, true);
 
 	UE_LOG(LogTemp, Warning, TEXT("Object is now being held by BiteCat"));
 }
@@ -221,17 +218,28 @@ void AHoldingObject::OnReleased()
 		return;
 	}
 
+	// 모든 클라이언트에서 충돌 무시 해제 (멀티플레이어 동기화)
+	if (HoldingCat)
+	{
+		MulticastSetCollisionIgnore(HoldingCat, false);
+	}
+
 	// 직접 처리 (BiteCat의 서버 RPC에서 호출됨)
 	bIsBeingHeld = false;
 	HoldingCat = nullptr;
 
-	// 놓았을 때 캐릭터와 충돌하도록 복구
-	if (MeshComponent)
-	{
-		MeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Block);
-	}
-
 	UE_LOG(LogTemp, Warning, TEXT("Object released from BiteCat"));
+}
+
+void AHoldingObject::MulticastSetCollisionIgnore_Implementation(ACatBase* Cat, bool bIgnore)
+{
+	// 모든 클라이언트(서버 포함)에서 충돌 설정 적용
+	if (MeshComponent && Cat)
+	{
+		MeshComponent->IgnoreActorWhenMoving(Cat, bIgnore);
+		UE_LOG(LogTemp, Log, TEXT("[HoldingObject] Collision ignore set to %s for %s"),
+			bIgnore ? TEXT("true") : TEXT("false"), *Cat->GetName());
+	}
 }
 
 void AHoldingObject::RespawnToInitialLocation()

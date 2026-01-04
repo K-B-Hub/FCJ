@@ -49,6 +49,9 @@ protected:
 	UInputAction* SpecialAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	UInputAction* SecondarySpecialAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	UInputAction* ZoomAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
@@ -87,6 +90,7 @@ protected:
 	void Jump();
 	void StopJumping();
 	void PerformSpecialAction();
+	void PerformSecondarySpecialAction();
 	void OnSpecialActionReleased();
 	void Zoom(const FInputActionValue& Value);
 	void OpenESCMenu();
@@ -153,6 +157,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Settings")
 	UInputAction* GetSpecialActionInput() const { return SpecialAction; }
+
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	UInputAction* GetSecondarySpecialActionInput() const { return SecondarySpecialAction; }
 
 private:
 	// Config file section name for saving settings

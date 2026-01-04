@@ -47,10 +47,10 @@ public:
 protected:
 	// 캐릭터 클래스들
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character Classes")
-	TSubclassOf<class AAttackCat> AttackCatClass;
+	TSubclassOf<class AHybridCat> AttackCatClass;  // 외형: AttackCat 스타일
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character Classes")
-	TSubclassOf<class ABiteCat> BiteCatClass;
+	TSubclassOf<class AHybridCat> BiteCatClass;   // 외형: BiteCat 스타일
 
 	// 캐릭터 간 최대 허용 거리 (이 거리를 초과하면 순간이동 발동)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Distance Settings", meta = (ToolTip = "두 캐릭터 간의 최대 허용 거리 - 이 거리를 초과하면 더 낮은 구역의 캐릭터 쪽으로 순간이동합니다"))
@@ -73,6 +73,9 @@ private:
 
 	// Subsystem에서 저장된 역할 정보 가져오기
 	int32 GetRoleFromSubsystem(APlayerController* PC);
+
+	// 역할에 맞는 캐릭터 스폰
+	void SpawnCharacterForRole(APlayerController* PC, int32 role);
 
 	// 거리 체크 타이머 핸들
 	FTimerHandle DistanceCheckTimerHandle;

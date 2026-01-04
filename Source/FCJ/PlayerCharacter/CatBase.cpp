@@ -108,7 +108,6 @@ void ACatBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetime
 
 	DOREPLIFETIME(ACatBase, bIsPerformingParkour);
 	DOREPLIFETIME(ACatBase, CurrentParkourActor);
-	DOREPLIFETIME(ACatBase, bIsMontageePlaying);
 	DOREPLIFETIME(ACatBase, CurrentSpeedModifier);
 	DOREPLIFETIME(ACatBase, InitialSpawnLocation);
 }
@@ -575,12 +574,21 @@ AActor* ACatBase::DetectParkourTarget() const
 
 bool ACatBase::CanPerformParkour() const
 {
-	// 이미 파쿠르 중이거나 다른 몽타주 플레이 중이면 불가능
-	if (bIsPerformingParkour || bIsMontageePlaying)
+	// 이미 파쿠르 중이면 불가능
+	if (bIsPerformingParkour)
 	{
-		UE_LOG(LogTemp, Log, TEXT("[PARKOUR] CanPerformParkour: false (bIsPerformingParkour=%d, bIsMontageePlaying=%d)"),
-			bIsPerformingParkour, bIsMontageePlaying);
+		UE_LOG(LogTemp, Log, TEXT("[PARKOUR] CanPerformParkour: false (already performing parkour)"));
 		return false;
+	}
+
+	// 다른 몽타주가 재생 중이면 불가능
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		if (AnimInstance->IsAnyMontagePlaying())
+		{
+			UE_LOG(LogTemp, Log, TEXT("[PARKOUR] CanPerformParkour: false (montage is playing)"));
+			return false;
+		}
 	}
 
 	// 파쿠르 몽타주가 설정되어 있는지 확인
@@ -657,6 +665,9 @@ void ACatBase::ServerPerformParkour_Implementation(AActor* ParkourTarget)
 	FAttachmentTransformRules AttachRules(EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, false);
 	AttachToActor(ParkourTarget, AttachRules);
 
+	// 기존 물리량(velocity) 초기화 - 루트모션만 사용하기 위함
+	GetCharacterMovement()->Velocity = FVector::ZeroVector;
+
 	// Change to Flying mode for Z-axis root motion
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
 
@@ -676,18 +687,17 @@ void ACatBase::MulticastPerformParkour_Implementation(AActor* ParkourTarget)
 	{
 		// Play montage with root motion
 		float MontageLength = AnimInstance->Montage_Play(ParkourMontage);
-		bIsMontageePlaying = true;
 
 		UE_LOG(LogTemp, Warning, TEXT("[PARKOUR] Animation PLAYING - Duration=%.2fs"), MontageLength);
 
-		// Set timer for montage completion (only on server)
+		// Set timer for parkour completion (only on server)
 		if (HasAuthority())
 		{
 			FTimerHandle ParkourTimerHandle;
 			GetWorld()->GetTimerManager().SetTimer(
 				ParkourTimerHandle,
 				this,
-				&ACatBase::OnParkourMontageCompleted,
+				&ACatBase::OnParkourCompleted,
 				MontageLength,
 				false
 			);
@@ -699,13 +709,15 @@ void ACatBase::MulticastPerformParkour_Implementation(AActor* ParkourTarget)
 	}
 }
 
-void ACatBase::OnParkourMontageCompleted()
+void ACatBase::OnParkourCompleted()
 {
 	// Only called on server
 	if (!HasAuthority())
 	{
 		return;
 	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[PARKOUR] Parkour completed"));
 
 	// Detach from parkour target
 	FDetachmentTransformRules DetachRules(EDetachmentRule::KeepWorld, false);
@@ -714,7 +726,6 @@ void ACatBase::OnParkourMontageCompleted()
 	// Reset parkour state (replicated)
 	bIsPerformingParkour = false;
 	CurrentParkourActor = nullptr;
-	bIsMontageePlaying = false;
 
 	// Restore Walking mode
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);

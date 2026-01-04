@@ -140,10 +140,6 @@ private:
 	UPROPERTY(Replicated)
 	AActor* CurrentParkourActor = nullptr;
 
-	// Montage playing state (replicated for network sync)
-	UPROPERTY(Replicated)
-	bool bIsMontageePlaying = false;
-
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -212,15 +208,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Parkour")
 	FVector CalculateParkourTargetLocationPrecise(AActor* Actor) const;
 
-	// Parkour completion callback
-	void OnParkourMontageCompleted();
-
-	// Montage state management
-	UFUNCTION(BlueprintCallable, Category = "Animation")
-	bool IsPlayingMontage() const { return bIsMontageePlaying; }
-
-	UFUNCTION(BlueprintCallable, Category = "Animation")
-	void SetMontageePlaying(bool InPlaying) { bIsMontageePlaying = InPlaying; }
+	// Parkour completion callback (called by timer)
+	void OnParkourCompleted();
 
 	// Public getters for components
 	UFUNCTION(BlueprintCallable, Category = "Camera")
@@ -245,6 +234,18 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Special Actions")
 	virtual void PerformSpecialAction() { OnSpecialAction(); }
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Special Actions")
+	void OnSecondarySpecialAction();
+
+	UFUNCTION(BlueprintCallable, Category = "Special Actions")
+	virtual void PerformSecondarySpecialAction() { OnSecondarySpecialAction(); }
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Special Actions")
+	void OnSpecialActionReleasedEvent();
+
+	UFUNCTION(BlueprintCallable, Category = "Special Actions")
+	virtual void OnSpecialActionReleased() { OnSpecialActionReleasedEvent(); }
 
 	//외부에서 속도 제어할 시 접근할 함수
 	UFUNCTION(BlueprintCallable, Category = "Speed Control")

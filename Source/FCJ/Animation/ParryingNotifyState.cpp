@@ -2,6 +2,7 @@
 
 #include "Animation/ParryingNotifyState.h"
 #include "PlayerCharacter/AttackCat.h"
+#include "PlayerCharacter/HybridCat.h"
 #include "Components/SkeletalMeshComponent.h"
 
 void UParryingNotifyState::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference)
@@ -13,13 +14,23 @@ void UParryingNotifyState::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSe
 		return;
 	}
 
-	// Get the AttackCat owner
-	if (AAttackCat* AttackCat = Cast<AAttackCat>(MeshComp->GetOwner()))
+	AActor* Owner = MeshComp->GetOwner();
+
+	// AttackCat support (backward compatibility)
+	if (AAttackCat* AttackCat = Cast<AAttackCat>(Owner))
 	{
 		AttackCat->StartParrying();
 
 		// 패링 시작 시 주변 물체 밀치기
 		AttackCat->PushNearbyObjects();
+	}
+	// HybridCat support
+	else if (AHybridCat* HybridCat = Cast<AHybridCat>(Owner))
+	{
+		HybridCat->StartParrying();
+
+		// 패링 시작 시 주변 물체 밀치기
+		HybridCat->PushNearbyObjects();
 	}
 }
 
@@ -32,9 +43,16 @@ void UParryingNotifyState::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequ
 		return;
 	}
 
-	// Get the AttackCat owner
-	if (AAttackCat* AttackCat = Cast<AAttackCat>(MeshComp->GetOwner()))
+	AActor* Owner = MeshComp->GetOwner();
+
+	// AttackCat support (backward compatibility)
+	if (AAttackCat* AttackCat = Cast<AAttackCat>(Owner))
 	{
 		AttackCat->StopParrying();
+	}
+	// HybridCat support
+	else if (AHybridCat* HybridCat = Cast<AHybridCat>(Owner))
+	{
+		HybridCat->StopParrying();
 	}
 }

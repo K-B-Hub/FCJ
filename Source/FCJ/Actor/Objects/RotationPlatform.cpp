@@ -46,7 +46,7 @@ void ARotationPlatform::Tick(float DeltaTime)
 	// Calculate rotation delta for this frame
 	FRotator DeltaRotation = RotationSpeed * DeltaTime;
 
-	// Add rotation to current rotation
-	AddActorWorldRotation(DeltaRotation);
+	// Add rotation to current rotation (local space)
+	AddActorLocalRotation(DeltaRotation);
 }
 

@@ -9,7 +9,7 @@
 #include "Net/UnrealNetwork.h"
 #include "HoldingObject.generated.h"
 
-class ABiteCat;
+class ACatBase;
 
 UCLASS(Blueprintable)
 class FCJ_API AHoldingObject : public AActor
@@ -37,7 +37,7 @@ protected:
 
 	// 현재 잡고 있는 캐릭터
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated, Category = "Holding")
-	ABiteCat* HoldingCat;
+	ACatBase* HoldingCat;
 
 	// 잡기 가능한 무게 (BiteCat의 최대 무게와 비교)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Holding Settings", meta = (ToolTip = "이 오브젝트의 무게입니다. BiteCat의 최대 무게보다 작아야 잡을 수 있습니다"))
@@ -85,10 +85,14 @@ public:
 	bool CanBeHeld() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Holding")
-	void OnHeld(ABiteCat* Cat);
+	void OnHeld(ACatBase* Cat);
 
 	UFUNCTION(BlueprintCallable, Category = "Holding")
 	void OnReleased();
+
+	// 멀티플레이어 동기화용 Multicast RPC
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastSetCollisionIgnore(ACatBase* Cat, bool bIgnore);
 
 
 	UFUNCTION(BlueprintCallable, Category = "Holding")
@@ -101,7 +105,7 @@ public:
 	FVector GetHoldOffset() const { return HoldOffset; }
 
 	UFUNCTION(BlueprintCallable, Category = "Holding")
-	ABiteCat* GetHoldingCat() const { return HoldingCat; }
+	ACatBase* GetHoldingCat() const { return HoldingCat; }
 
 	// 리스폰 함수 (RespawnVolume에서 호출)
 	UFUNCTION(BlueprintCallable, Category = "Respawn")
