@@ -53,6 +53,7 @@ void UMainMenuWidget::OnSettingClicked()
 	if (SettingsWidget)
 	{
 		SettingsWidget->SetVisibility(ESlateVisibility::Visible);
+		UE_LOG(LogTemp, Warning, TEXT("Settings Widget made visible"));
 	}
 }
 
