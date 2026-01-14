@@ -79,6 +79,13 @@ The project implements a modular dual-cat cooperative system designed for platfo
      - Server-replicated charge state for networked gameplay
      - Detects and interacts with `AHoldingObject` instances in the world
 
+   - **AHybridCat**: Combined abilities specialist (both grab/throw and parry/push)
+     - Inherits from ACatBase, combines BiteCat and AttackCat functionality
+     - SpecialAction (LeftShift): Grab/Throw functionality
+     - SecondarySpecialAction (LeftControl): Parry/Push functionality
+     - Mutual exclusion logic: Cannot parry while holding, cannot grab while parrying
+     - Server-replicated charge and parry states for networked gameplay
+
 3. **Cooperative Gameplay Controller (AMultiPlayerController)**
    - Individual directional input actions (MoveForward, MoveBackward, MoveLeft, MoveRight)
    - Combined movement system for precise platformer control with parkour lock
@@ -166,6 +173,24 @@ The project implements a modular dual-cat cooperative system designed for platfo
        4. After RespawnDelay, Platform A respawns and can be triggered again
      - `ResetPlatform()`: Server-only function to reset platform to initial state
      - Use case: Create dynamic platforming sequences where players must quickly navigate to the next platform before the current one disappears
+
+   - **ASpringTrap**: Reusable launch trap for platforming challenges
+     - State machine: Retracted → Extending → Extended → Retracting → Cooldown → Retracted
+     - Launches characters when stepped on with configurable angle and force
+     - Blueprint-configurable settings:
+       - `LaunchAngle` (0-90°): Launch trajectory angle
+       - `LaunchForce`: Horizontal launch force
+       - `VerticalLaunchForce`: Vertical component of launch
+       - `ExtensionHeight`, `ExtensionSpeed`, `RetractionSpeed`: Mesh animation
+       - `ExtendedHoldTime`, `CooldownTime`: Timing control
+     - Replicated state via RepNotify (`OnRep_TrapState`) for visual sync
+     - Server-authoritative activation and character launching
+
+   - **AAttachedPlatform**: Platform that captures and holds HoldingObjects
+     - AttachTriggerBox detects thrown HoldingObjects
+     - Server RPC + Multicast pattern for network sync
+     - Blueprint-configurable AttachOffset and physics disable option
+     - Use case: Puzzles where players must throw objects onto platforms
 
 6. **Projectile Combat System**
    - **AProjectile**: Advanced projectile actors with multiple behavior types
@@ -263,6 +288,11 @@ The project implements a modular dual-cat cooperative system designed for platfo
      - `OnRep_SpeedModifier()` syncs speed changes to all clients
      - Used by DebuffVolume (0.5x speed in hazard zones)
 
+   - **Object Slow Fall Volume** (AObjectSlowFallVolume)
+     - Limits falling speed for HoldingObjects within the volume
+     - Overlap-based detection with begin/end callbacks
+     - Use case: Gentle descent areas for thrown objects
+
 10. **Level Transition & Loading System**
     - **UFCJGameInstance**: Persistent game instance across level changes
       - Manages LoadingWidget lifecycle (survives level transitions)
@@ -337,8 +367,9 @@ Source/FCJ/
 │   └── LobbyGameState.cpp/h     # Replicated lobby state with player role management
 ├── PlayerCharacter/             # Character implementations
 │   ├── CatBase.cpp/h           # Base character class with wall jump & special actions
-│   ├── AttackCat.cpp/h         # Combat-focused variant (minimal implementation)
-│   └── BiteCat.cpp/h           # Object holding/grabbing specialist
+│   ├── AttackCat.cpp/h         # Combat-focused variant with parrying
+│   ├── BiteCat.cpp/h           # Object holding/grabbing specialist
+│   └── HybridCat.cpp/h         # Combined grab/throw and parry/push abilities
 ├── PlayerController/            # Controller implementations
 │   ├── MultiPlayerController.cpp/h # Enhanced Input with individual direction controls
 │   └── MainMenuController.cpp/h
@@ -363,7 +394,8 @@ Source/FCJ/
 │   │   ├── ProjectileVolume.cpp/h               # Spawns and manages projectiles
 │   │   ├── DebuffVolume.cpp/h                   # Applies debuffs to players in volume
 │   │   ├── RespawnVolume.cpp/h                  # Kill volumes with visual spawn points
-│   │   └── ZoneVolume.cpp/h                     # Puzzle zone tracking and completion
+│   │   ├── ZoneVolume.cpp/h                     # Puzzle zone tracking and completion
+│   │   └── ObjectSlowFallVolume.cpp/h           # Limits falling speed for HoldingObjects
 │   └── Objects/                # Interactive game objects
 │       ├── WallJumpObject.cpp/h                 # Wall surfaces for wall jumping
 │       ├── HoldingObject.cpp/h                  # Objects grabbable by BiteCat
@@ -372,7 +404,9 @@ Source/FCJ/
 │       ├── RotationPlatform.cpp/h               # Rotating platforms
 │       ├── FadingPlatform.cpp/h                 # Disappearing platforms with delegate events
 │       ├── PairFadingPlatform.cpp/h             # Alternating platform system
-│       └── ContinuousFadingPlatform.cpp/h       # Continuous sequential platform system
+│       ├── ContinuousFadingPlatform.cpp/h       # Continuous sequential platform system
+│       ├── SpringTrap.cpp/h                     # Launch trap with state machine
+│       └── AttachedPlatform.cpp/h               # Platform that captures HoldingObjects
 ├── Animation/                   # Animation notify states
 │   └── ParryingNotifyState.cpp/h # Animation notify for parrying mechanics
 └── Widdget/                     # UI widgets (note: typo in folder name)
@@ -393,7 +427,8 @@ Source/FCJ/
 - **PlayerCharacter/**: Specialized cat character Blueprints
   - BP_AttackCat: Combat specialist with parrying abilities
   - BP_BiteCat: Object manipulation specialist with charge-throw mechanics
-  - **CRITICAL**: Both must have ParkourMontage set in Blueprint or parkour will fail with "ParkourMontage is NULL" error
+  - BP_HybridCat: Combined abilities (grab/throw + parry/push)
+  - **CRITICAL**: All cat Blueprints must have ParkourMontage set or parkour will fail with "ParkourMontage is NULL" error
 - **PlayerController/**: Platformer-optimized controller setups
 - **Widget/**: Cooperative game UI elements
 - **Levels/**: Cooperative platformer levels and test environments
