@@ -86,14 +86,7 @@ void AProjectileVolume::OnVolumeEndOverlap(UPrimitiveComponent* OverlappedCompon
 
 void AProjectileVolume::SetActive(bool bNewActive)
 {
-	if (HasAuthority())
-	{
-		ServerSetActive(bNewActive);
-	}
-	else
-	{
-		ServerSetActive(bNewActive);
-	}
+	ServerSetActive(bNewActive);
 }
 
 void AProjectileVolume::ServerSetActive_Implementation(bool bNewActive)
